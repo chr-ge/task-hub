@@ -221,12 +221,14 @@ function FlatTable({
   userMap,
   reviewMutation,
   page,
+  showActions = true,
 }: {
   submissions: Submission[];
   taskMap: Map<string, Task>;
   userMap: Map<string, string>;
   reviewMutation: ReturnType<typeof useReviewSubmission>;
   page: number;
+  showActions?: boolean;
 }) {
   const start = page * PAGE_SIZE;
   const pageItems = submissions.slice(start, start + PAGE_SIZE);
@@ -254,7 +256,7 @@ function FlatTable({
             <TableHead>Submitted</TableHead>
             <TableHead>Data</TableHead>
             <TableHead>Reviewed</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            {showActions && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -283,16 +285,18 @@ function FlatTable({
                 <TableCell className="text-muted-foreground">
                   {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
                 </TableCell>
-                <TableCell className="text-right">
-                  {s.status === "pending" ? (
-                    <ReviewActions
-                      submissionId={s.id}
-                      reviewMutation={reviewMutation}
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{"\u2014"}</span>
-                  )}
-                </TableCell>
+                {showActions && (
+                  <TableCell className="text-right">
+                    {s.status === "pending" ? (
+                      <ReviewActions
+                        submissionId={s.id}
+                        reviewMutation={reviewMutation}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
@@ -320,11 +324,13 @@ function GroupedView({
   taskMap,
   userMap,
   reviewMutation,
+  showActions = true,
 }: {
   submissions: Submission[];
   taskMap: Map<string, Task>;
   userMap: Map<string, string>;
   reviewMutation: ReturnType<typeof useReviewSubmission>;
+  showActions?: boolean;
 }) {
   const groups = useMemo(() => {
     const groupMap = new Map<string, Submission[]>();
@@ -392,7 +398,7 @@ function GroupedView({
                 <TableHead>Submitted</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Reviewed</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {showActions && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -413,16 +419,18 @@ function GroupedView({
                   <TableCell className="text-muted-foreground">
                     {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {s.status === "pending" ? (
-                      <ReviewActions
-                        submissionId={s.id}
-                        reviewMutation={reviewMutation}
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{"\u2014"}</span>
-                    )}
-                  </TableCell>
+                  {showActions && (
+                    <TableCell className="text-right">
+                      {s.status === "pending" ? (
+                        <ReviewActions
+                          submissionId={s.id}
+                          reviewMutation={reviewMutation}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -585,7 +593,8 @@ export default function AdminSubmissionsPage() {
         </div>
         <Button
           size="sm"
-          variant={groupByTask ? "secondary" : "outline"}
+          variant="outline"
+          className={groupByTask ? "bg-card text-primary border-border shadow-sm" : ""}
           onClick={() => {
             void setGroupByTask(!groupByTask);
             setPage(0);
@@ -658,6 +667,7 @@ export default function AdminSubmissionsPage() {
             taskMap={taskMap}
             userMap={userMap}
             reviewMutation={reviewMutation}
+            showActions={statusFilter === "all" || statusFilter === "pending"}
           />
         ) : (
           <>
@@ -667,6 +677,7 @@ export default function AdminSubmissionsPage() {
               userMap={userMap}
               reviewMutation={reviewMutation}
               page={page}
+              showActions={statusFilter === "all" || statusFilter === "pending"}
             />
             <Pagination
               page={page}
