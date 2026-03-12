@@ -3,21 +3,14 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard,
   ListTodo,
   ClipboardCheck,
   Briefcase,
   LogOut,
-  ArrowLeftRight,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -27,31 +20,28 @@ interface NavItem {
 }
 
 const adminNav: NavItem[] = [
-  { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="size-4" /> },
   { label: "Tasks", href: "/admin/tasks", icon: <ListTodo className="size-4" /> },
   { label: "Submissions", href: "/admin/submissions", icon: <ClipboardCheck className="size-4" /> },
 ];
 
-const workerNav: NavItem[] = [
-  { label: "Tasks", href: "/worker", icon: <Briefcase className="size-4" /> },
+const userNav: NavItem[] = [
+  { label: "Tasks", href: "/user", icon: <Briefcase className="size-4" /> },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
 
   if (!user) return null;
 
-  const navItems = user.role === "admin" ? adminNav : workerNav;
-  const oppositeRole = user.role === "admin" ? "worker" : "admin";
-
+  const navItems = user.role === "admin" ? adminNav : userNav;
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <aside className="hidden w-56 shrink-0 flex-col border-r bg-card md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col border-r bg-sidebar md:flex">
         {/* Brand */}
         <div className="flex h-14 items-center gap-2 px-4">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+          <div className="flex size-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground">
             T
           </div>
           <span className="text-sm font-semibold tracking-tight">TaskHub</span>
@@ -67,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const isActive =
               item.href === pathname ||
               (item.href !== "/admin" &&
-                item.href !== "/worker" &&
+                item.href !== "/user" &&
                 pathname.startsWith(item.href));
             return (
               <Link
@@ -76,8 +66,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary/8 text-primary"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
               >
                 {item.icon}
@@ -88,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User & actions */}
-        <div className="border-t p-3">
+        <div className="border-t bg-muted/30 p-3">
           <div className="mb-2 flex items-center gap-2">
             {user.avatar_url ? (
               <img
@@ -106,28 +96,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
             </div>
           </div>
-          <div className="flex gap-1">
-            <Tooltip>
-              <TooltipTrigger
-                className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                onClick={() => switchRole(oppositeRole)}
-              >
-                <ArrowLeftRight className="size-3.5" />
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Switch to {oppositeRole}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                onClick={logout}
-              >
-                <LogOut className="size-3.5" />
-              </TooltipTrigger>
-              <TooltipContent side="top">Logout</TooltipContent>
-            </Tooltip>
-          </div>
+          <button
+            className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={logout}
+          >
+            <LogOut className="size-3.5" />
+            Logout
+          </button>
         </div>
       </aside>
 
@@ -135,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-4 md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+            <div className="flex size-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground">
               T
             </div>
             <span className="text-sm font-semibold">TaskHub</span>
@@ -144,12 +119,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Badge variant="outline" className="text-[10px] capitalize">
               {user.role}
             </Badge>
-            <button
-              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              onClick={() => switchRole(oppositeRole)}
-            >
-              <ArrowLeftRight className="size-3.5" />
-            </button>
             <button
               className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               onClick={logout}
@@ -168,7 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               const isActive =
                 item.href === pathname ||
                 (item.href !== "/admin" &&
-                  item.href !== "/worker" &&
+                  item.href !== "/user" &&
                   pathname.startsWith(item.href));
               return (
                 <Link

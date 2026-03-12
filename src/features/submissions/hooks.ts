@@ -7,7 +7,7 @@ import type { SubmissionFormValues } from "@/lib/types";
 import {
   getSubmissions,
   getSubmissionsByTask,
-  getSubmissionsByWorker,
+  getSubmissionsByUser,
   createSubmission,
   reviewSubmission,
 } from "@/lib/repositories";
@@ -31,11 +31,11 @@ export function useSubmissionsByTask(taskId: string) {
   });
 }
 
-export function useSubmissionsByWorker(workerId: string) {
+export function useSubmissionsByUser(userId: string) {
   return useQuery({
-    queryKey: ["submissions", "worker", workerId],
-    queryFn: () => getSubmissionsByWorker(workerId),
-    enabled: !!workerId,
+    queryKey: ["submissions", "user", userId],
+    queryFn: () => getSubmissionsByUser(userId),
+    enabled: !!userId,
   });
 }
 
@@ -49,11 +49,11 @@ export function useCreateSubmission() {
   return useMutation({
     mutationFn: ({
       values,
-      workerId,
+      userId,
     }: {
       values: SubmissionFormValues;
-      workerId: string;
-    }) => createSubmission(values, workerId),
+      userId: string;
+    }) => createSubmission(values, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
       toast.success("Submission created");

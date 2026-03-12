@@ -27,23 +27,23 @@ export async function getSubmissionsByTask(
   return submissions.filter((s) => s.task_id === taskId);
 }
 
-export async function getSubmissionsByWorker(
-  workerId: string,
+export async function getSubmissionsByUser(
+  userId: string,
 ): Promise<Submission[]> {
   await simulateReadDelay();
   const submissions = readSubmissions();
-  return submissions.filter((s) => s.worker_id === workerId);
+  return submissions.filter((s) => s.user_id === userId);
 }
 
 export async function createSubmission(
   values: SubmissionFormValues,
-  workerId: string,
+  userId: string,
 ): Promise<Submission> {
   await simulateWriteDelay();
   const submission: Submission = {
     ...values,
     id: uuidv4(),
-    worker_id: workerId,
+    user_id: userId,
     status: "pending",
     submitted_at: new Date().toISOString(),
     reviewed_at: null,

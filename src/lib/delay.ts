@@ -3,11 +3,11 @@ function randomBetween(min: number, max: number): number {
 }
 
 export function simulateReadDelay(): Promise<void> {
-  const ms = randomBetween(1000, 3000);
+  const ms = randomBetween(500, 1500);
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function simulateWriteDelay(): Promise<void> {
-  const ms = randomBetween(3000, 5000);
+  const ms = randomBetween(1000, 2000);
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

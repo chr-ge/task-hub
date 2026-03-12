@@ -15,19 +15,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 import { useCreateTask, useUpdateTask } from "./hooks";
@@ -74,7 +73,7 @@ function TaskComposer({ task, open, onOpenChange, onSuccess }: TaskComposerProps
     defaultValues: getDefaults(task),
   });
 
-  // Reset form values when the sheet opens or the task changes
+  // Reset form values when the dialog opens or the task changes
   useEffect(() => {
     if (open) {
       reset(getDefaults(task));
@@ -94,20 +93,20 @@ function TaskComposer({ task, open, onOpenChange, onSuccess }: TaskComposerProps
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{isEditing ? "Edit Task" : "Create Task"}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Task" : "Create Task"}</DialogTitle>
+          <DialogDescription>
             {isEditing
               ? "Update the task details below."
               : "Fill in the details to create a new task."}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 px-4"
+          className="flex flex-col gap-4"
         >
           {/* Task Type */}
           <fieldset disabled={isPending} className="flex flex-col gap-1.5">
@@ -125,7 +124,9 @@ function TaskComposer({ task, open, onOpenChange, onSuccess }: TaskComposerProps
                     className="w-full"
                     aria-invalid={!!errors.task_type}
                   >
-                    <SelectValue />
+                    <span className="flex flex-1 text-left line-clamp-1">
+                      {TASK_TYPE_LABELS[field.value]}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
                     {(
@@ -190,42 +191,43 @@ function TaskComposer({ task, open, onOpenChange, onSuccess }: TaskComposerProps
             )}
           </fieldset>
 
-          {/* Amount */}
-          <fieldset disabled={isPending} className="flex flex-col gap-1.5">
-            <Label htmlFor="amount">Amount</Label>
-            <Input
-              id="amount"
-              type="number"
-              min={1}
-              {...register("amount", { valueAsNumber: true })}
-              aria-invalid={!!errors.amount}
-            />
-            {errors.amount && (
-              <p className="text-xs text-destructive">{errors.amount.message}</p>
-            )}
-          </fieldset>
-
-          {/* Reward */}
-          <fieldset disabled={isPending} className="flex flex-col gap-1.5">
-            <Label htmlFor="reward">Reward</Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-sm text-muted-foreground">
-                $
-              </span>
+          {/* Amount & Reward side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            <fieldset disabled={isPending} className="flex flex-col gap-1.5">
+              <Label htmlFor="amount">Amount</Label>
               <Input
-                id="reward"
+                id="amount"
                 type="number"
-                min={0}
-                step={0.01}
-                className="pl-7"
-                {...register("reward", { valueAsNumber: true })}
-                aria-invalid={!!errors.reward}
+                min={1}
+                {...register("amount", { valueAsNumber: true })}
+                aria-invalid={!!errors.amount}
               />
-            </div>
-            {errors.reward && (
-              <p className="text-xs text-destructive">{errors.reward.message}</p>
-            )}
-          </fieldset>
+              {errors.amount && (
+                <p className="text-xs text-destructive">{errors.amount.message}</p>
+              )}
+            </fieldset>
+
+            <fieldset disabled={isPending} className="flex flex-col gap-1.5">
+              <Label htmlFor="reward">Reward</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-sm text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="reward"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  className="pl-7"
+                  {...register("reward", { valueAsNumber: true })}
+                  aria-invalid={!!errors.reward}
+                />
+              </div>
+              {errors.reward && (
+                <p className="text-xs text-destructive">{errors.reward.message}</p>
+              )}
+            </fieldset>
+          </div>
 
           {/* Allow Multiple Submissions */}
           <fieldset disabled={isPending} className="flex flex-col gap-1.5">
@@ -268,17 +270,25 @@ function TaskComposer({ task, open, onOpenChange, onSuccess }: TaskComposerProps
           </fieldset>
 
           {/* Submit */}
-          <SheetFooter className="px-0">
-            <Button type="submit" disabled={isPending} className="w-full">
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending}>
               {isPending && (
                 <Loader2Icon className={cn("size-4 animate-spin")} />
               )}
               {isEditing ? "Save Changes" : "Create Task"}
             </Button>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

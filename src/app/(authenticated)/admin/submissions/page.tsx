@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { Loader2Icon, CheckIcon, XIcon, LayersIcon } from "lucide-react";
+import { Loader2Icon, CheckIcon, XIcon, LayersIcon, InboxIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Submission, SubmissionStatus, Task, User } from "@/lib/types";
@@ -139,7 +139,7 @@ function ReviewActions({
   const pendingStatus = isPending ? reviewMutation.variables?.status : null;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center justify-end gap-1">
       <Button
         size="xs"
         variant="ghost"
@@ -191,7 +191,8 @@ function SkeletonRows({ count }: { count: number }) {
           <TableCell><Skeleton className="h-4 w-16" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -220,65 +221,72 @@ function FlatTable({
 
   if (pageItems.length === 0) {
     return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        No submissions match filters
+      <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
+        <div className="rounded-full bg-muted p-3">
+          <InboxIcon className="size-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium">No submissions match filters</p>
       </div>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Worker</TableHead>
-          <TableHead>Task</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Submitted</TableHead>
-          <TableHead>Data</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {pageItems.map((s) => {
-          const task = taskMap.get(s.task_id);
-          return (
-            <TableRow key={s.id}>
-              <TableCell className="font-medium">
-                {userMap.get(s.worker_id) ?? s.worker_id.slice(0, 8)}
-              </TableCell>
-              <TableCell className="max-w-[200px] truncate">
-                {task?.title ?? "Unknown task"}
-              </TableCell>
-              <TableCell>
-                {task ? <TaskTypeBadge type={task.task_type} /> : "\u2014"}
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={s.status} />
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {formatDate(s.submitted_at)}
-              </TableCell>
-              <TableCell className="max-w-[260px] truncate text-muted-foreground">
-                {getSubmissionPreview(s.data)}
-              </TableCell>
-              <TableCell className="text-right">
-                {s.status === "pending" ? (
-                  <ReviewActions
-                    submissionId={s.id}
-                    reviewMutation={reviewMutation}
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
-                  </span>
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead>Task</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Submitted</TableHead>
+            <TableHead>Data</TableHead>
+            <TableHead>Reviewed</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pageItems.map((s) => {
+            const task = taskMap.get(s.task_id);
+            return (
+              <TableRow key={s.id}>
+                <TableCell className="font-medium">
+                  {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
+                </TableCell>
+                <TableCell className="max-w-[200px] truncate">
+                  {task?.title ?? "Unknown task"}
+                </TableCell>
+                <TableCell>
+                  {task ? <TaskTypeBadge type={task.task_type} /> : "\u2014"}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={s.status} />
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatDate(s.submitted_at)}
+                </TableCell>
+                <TableCell className="max-w-[260px] truncate text-muted-foreground">
+                  {getSubmissionPreview(s.data)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {s.status === "pending" ? (
+                    <ReviewActions
+                      submissionId={s.id}
+                      reviewMutation={reviewMutation}
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -332,8 +340,11 @@ function GroupedView({
 
   if (groups.length === 0) {
     return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        No submissions match filters
+      <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
+        <div className="rounded-full bg-muted p-3">
+          <InboxIcon className="size-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium">No submissions match filters</p>
       </div>
     );
   }
@@ -341,7 +352,7 @@ function GroupedView({
   return (
     <div className="space-y-4">
       {groups.map((g) => (
-        <div key={g.taskId} className="rounded-lg border">
+        <div key={g.taskId} className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
             <span className="text-sm font-medium">
               {g.task?.title ?? "Unknown task"}
@@ -364,10 +375,11 @@ function GroupedView({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Worker</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead>Reviewed</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -375,7 +387,7 @@ function GroupedView({
               {g.submissions.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">
-                    {userMap.get(s.worker_id) ?? s.worker_id.slice(0, 8)}
+                    {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={s.status} />
@@ -386,6 +398,9 @@ function GroupedView({
                   <TableCell className="max-w-[260px] truncate text-muted-foreground">
                     {getSubmissionPreview(s.data)}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
+                  </TableCell>
                   <TableCell className="text-right">
                     {s.status === "pending" ? (
                       <ReviewActions
@@ -393,9 +408,7 @@ function GroupedView({
                         reviewMutation={reviewMutation}
                       />
                     ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{"\u2014"}</span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -428,7 +441,7 @@ function Pagination({
       <span className="text-xs text-muted-foreground">
         Page {page + 1} of {totalPages}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-end gap-1">
         <Button
           size="xs"
           variant="outline"
@@ -529,8 +542,8 @@ export default function AdminSubmissionsPage() {
   // Error state
   if (isError && !isLoading) {
     return (
-      <div className="p-6">
-        <h1 className="text-lg font-semibold">Submissions Review</h1>
+      <div className="px-6 pt-8 pb-6">
+        <h1>Submissions Review</h1>
         <div className="mt-6 flex flex-col items-center gap-3 py-12 text-sm text-muted-foreground">
           <p>Failed to load submissions.</p>
           <Button
@@ -549,13 +562,13 @@ export default function AdminSubmissionsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="px-6 pt-8 pb-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Submissions Review</h1>
+          <h1>Submissions Review</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Review, approve, or reject worker submissions.
+            Review, approve, or reject user submissions.
           </p>
         </div>
         <Button
@@ -592,27 +605,40 @@ export default function AdminSubmissionsPage() {
       {/* Content */}
       <div className="mt-4">
         {isLoading ? (
-          <Table>
+          <div className="overflow-hidden rounded-xl border border-border bg-card"><Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Worker</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead>Reviewed</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <SkeletonRows count={8} />
             </TableBody>
-          </Table>
+          </Table></div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            {submissions && submissions.length === 0
-              ? "No submissions yet"
-              : "No submissions match filters"}
+          <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
+            <div className="rounded-full bg-muted p-3">
+              <InboxIcon className="size-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                {submissions && submissions.length === 0
+                  ? "No submissions yet"
+                  : "No submissions match filters"}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {submissions && submissions.length === 0
+                  ? "Submissions will appear here once workers complete tasks"
+                  : "Try adjusting the status filter above"}
+              </p>
+            </div>
           </div>
         ) : groupByTask ? (
           <GroupedView

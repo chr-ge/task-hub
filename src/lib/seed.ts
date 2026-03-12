@@ -7,7 +7,11 @@ const STORAGE_KEYS = {
   users: "task-hub:users",
   tasks: "task-hub:tasks",
   submissions: "task-hub:submissions",
+  seedVersion: "task-hub:seed-version",
 } as const;
+
+// Bump this when the seed schema changes to force a re-seed.
+const SEED_VERSION = 2;
 
 function randomDate(daysAgo: number, daysAgoEnd: number = 0): string {
   const now = Date.now();
@@ -37,7 +41,7 @@ const campaignIds: readonly string[] = [
 
 const adminId = uuidv4();
 
-const workerIds: readonly string[] = [
+const userIds: readonly string[] = [
   uuidv4(),
   uuidv4(),
   uuidv4(),
@@ -54,38 +58,38 @@ export const seedUsers: User[] = [
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=olivia",
   },
   {
-    id: workerIds[0],
+    id: userIds[0],
     name: "James Chen",
     email: "james.chen@example.com",
-    role: "worker",
+    role: "user",
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=james",
   },
   {
-    id: workerIds[1],
+    id: userIds[1],
     name: "Priya Sharma",
     email: "priya.sharma@example.com",
-    role: "worker",
+    role: "user",
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=priya",
   },
   {
-    id: workerIds[2],
+    id: userIds[2],
     name: "Marcus Johnson",
     email: "marcus.johnson@example.com",
-    role: "worker",
+    role: "user",
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=marcus",
   },
   {
-    id: workerIds[3],
+    id: userIds[3],
     name: "Sofia Rossi",
     email: "sofia.rossi@example.com",
-    role: "worker",
+    role: "user",
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=sofia",
   },
   {
-    id: workerIds[4],
+    id: userIds[4],
     name: "Daniel Okafor",
     email: "daniel.okafor@example.com",
-    role: "worker",
+    role: "user",
     avatar_url: "https://api.dicebear.com/9.x/avataaars/svg?seed=daniel",
   },
 ];
@@ -362,7 +366,7 @@ function buildSubmissions(): Submission[] {
     const count = baseCounts[i];
 
     for (let j = 0; j < count; j++) {
-      const workerId = pick(workerIds);
+      const pickedUserId = pick(userIds);
       const status: SubmissionStatus = pick(statuses);
       const submittedAt = randomDate(25, 2);
       const reviewedAt =
@@ -375,7 +379,7 @@ function buildSubmissions(): Submission[] {
       submissions.push({
         id: uuidv4(),
         task_id: task.id,
-        worker_id: workerId,
+        user_id: pickedUserId,
         status,
         data: buildSubmissionData(task.task_type, task.title),
         submitted_at: submittedAt,
@@ -394,17 +398,25 @@ export const seedSubmissions: Submission[] = buildSubmissions();
 export function seedDatabase(): void {
   if (typeof window === "undefined") return;
 
-  const hasUsers = localStorage.getItem(STORAGE_KEYS.users);
-  const hasTasks = localStorage.getItem(STORAGE_KEYS.tasks);
-  const hasSubmissions = localStorage.getItem(STORAGE_KEYS.submissions);
+  const storedVersion = localStorage.getItem(STORAGE_KEYS.seedVersion);
+  const isStale = storedVersion !== String(SEED_VERSION);
 
-  if (!hasUsers) {
+  if (isStale) {
+    // Clear old data so we can re-seed with the current schema.
+    localStorage.removeItem(STORAGE_KEYS.users);
+    localStorage.removeItem(STORAGE_KEYS.tasks);
+    localStorage.removeItem(STORAGE_KEYS.submissions);
+    localStorage.removeItem("task-hub:current-user");
+    localStorage.setItem(STORAGE_KEYS.seedVersion, String(SEED_VERSION));
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.users)) {
     localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(seedUsers));
   }
-  if (!hasTasks) {
+  if (!localStorage.getItem(STORAGE_KEYS.tasks)) {
     localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(seedTasks));
   }
-  if (!hasSubmissions) {
+  if (!localStorage.getItem(STORAGE_KEYS.submissions)) {
     localStorage.setItem(STORAGE_KEYS.submissions, JSON.stringify(seedSubmissions));
   }
 }

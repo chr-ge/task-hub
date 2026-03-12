@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { SearchIcon, LoaderIcon } from "lucide-react";
+import { SearchIcon, LoaderIcon, InboxIcon, MousePointerClickIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, SubmissionData } from "@/lib/types";
@@ -81,18 +81,21 @@ function TaskCard({
   task,
   isSelected,
   onClick,
+  index,
 }: {
   task: Task;
   isSelected: boolean;
   onClick: () => void;
+  index: number;
 }) {
   return (
     <Card
       size="sm"
       className={cn(
-        "cursor-pointer transition-colors hover:bg-muted/50",
+        "animate-in-up cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm",
         isSelected && "ring-2 ring-primary"
       )}
+      style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}
       onClick={onClick}
     >
       <CardHeader>
@@ -110,7 +113,7 @@ function TaskCard({
             {task.amount} slot{task.amount !== 1 ? "s" : ""} remaining
           </span>
         </div>
-        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+        <p className="mt-2.5 line-clamp-2 text-sm text-muted-foreground">
           {task.description}
         </p>
       </CardContent>
@@ -204,7 +207,7 @@ function SubmissionForm({
       createSubmission.mutate(
         {
           values: { task_id: task.id, data },
-          workerId: user.id,
+          userId: user.id,
         },
         {
           onSuccess: () => {
@@ -341,7 +344,7 @@ function TaskDetail({
 // Page
 // ---------------------------------------------------------------------------
 
-export default function WorkerTasksPage() {
+export default function UserTasksPage() {
   const { data: tasks, isLoading, isError, refetch } = useTasks();
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -405,8 +408,10 @@ export default function WorkerTasksPage() {
   const handleTaskClick = useCallback(
     (taskId: string) => {
       setSelectedTaskId(taskId);
-      // Open sheet on mobile
-      setSheetOpen(true);
+      // Only open the sheet on mobile (< md breakpoint = 768px)
+      if (window.matchMedia("(max-width: 767px)").matches) {
+        setSheetOpen(true);
+      }
     },
     []
   );
@@ -425,8 +430,8 @@ export default function WorkerTasksPage() {
   if (isLoading) {
     return (
       <div className="flex h-full flex-col">
-        <div className="border-b p-4">
-          <h1 className="text-lg font-semibold">Available Tasks</h1>
+        <div className="border-b px-4 pt-5 pb-4">
+          <h1>Available Tasks</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Browse tasks and submit your work.
           </p>
@@ -466,8 +471,8 @@ export default function WorkerTasksPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b p-4">
-        <h1 className="text-lg font-semibold">Available Tasks</h1>
+      <div className="border-b px-4 pt-5 pb-4">
+        <h1>Available Tasks</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Browse tasks and submit your work.
         </p>
@@ -515,16 +520,27 @@ export default function WorkerTasksPage() {
           <ScrollArea className="flex-1">
             <div className="grid gap-3 p-4">
               {pagedTasks.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">
-                  No tasks available
+                <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
+                  <div className="rounded-full bg-muted p-3">
+                    <InboxIcon className="size-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">No tasks available</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {search.trim()
+                        ? "Try a different search term"
+                        : "Check back later for new tasks"}
+                    </p>
+                  </div>
                 </div>
               ) : (
-                pagedTasks.map((task) => (
+                pagedTasks.map((task, i) => (
                   <TaskCard
                     key={task.id}
                     task={task}
                     isSelected={selectedTaskId === task.id}
                     onClick={() => handleTaskClick(task.id)}
+                    index={i}
                   />
                 ))
               )}
@@ -533,7 +549,7 @@ export default function WorkerTasksPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-2">
+            <div className="flex items-center justify-between border-t px-4 py-2.5">
               <Button
                 variant="outline"
                 size="sm"
@@ -566,8 +582,14 @@ export default function WorkerTasksPage() {
               <TaskDetail task={selectedTask} />
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Select a task to view details
+            <div className="animate-in-fade flex h-full flex-col items-center justify-center gap-2 text-center">
+              <MousePointerClickIcon className="size-6 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                Select a task to view details
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Click any task on the left to get started
+              </p>
             </div>
           )}
         </div>

@@ -11,7 +11,7 @@ export {
 export {
   getSubmissions,
   getSubmissionsByTask,
-  getSubmissionsByWorker,
+  getSubmissionsByUser,
   createSubmission,
   reviewSubmission,
 } from "./submissions";

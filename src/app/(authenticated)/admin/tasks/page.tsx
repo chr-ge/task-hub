@@ -59,7 +59,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -714,10 +713,10 @@ export default function AdminTasksPage() {
   // Loading state
   if (tasksQuery.isLoading || submissionsQuery.isLoading) {
     return (
-      <div className="p-6">
+      <div className="px-6 pt-8 pb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">Task Management</h1>
+            <h1>Task Management</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Manage your tasks, create new ones, and track progress.
             </p>
@@ -733,9 +732,9 @@ export default function AdminTasksPage() {
   // Error state
   if (tasksQuery.isError) {
     return (
-      <div className="p-6">
+      <div className="px-6 pt-8 pb-6">
         <div>
-          <h1 className="text-lg font-semibold">Task Management</h1>
+          <h1>Task Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your tasks, create new ones, and track progress.
           </p>
@@ -755,14 +754,16 @@ export default function AdminTasksPage() {
   // Empty state
   if (tasks.length === 0) {
     return (
-      <div className="p-6">
+      <div className="px-6 pt-8 pb-6">
         <div>
-          <h1 className="text-lg font-semibold">Task Management</h1>
+          <h1>Task Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your tasks, create new ones, and track progress.
           </p>
         </div>
-        <EmptyState onCreateClick={handleCreate} />
+        <div className="animate-in-up">
+          <EmptyState onCreateClick={handleCreate} />
+        </div>
         <TaskComposer
           open={composerOpen}
           onOpenChange={handleComposerClose}
@@ -773,11 +774,11 @@ export default function AdminTasksPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="px-6 pt-8 pb-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Task Management</h1>
+          <h1>Task Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your tasks, create new ones, and track progress.
           </p>
@@ -801,7 +802,9 @@ export default function AdminTasksPage() {
         {/* Type filter */}
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "all")}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by type" />
+            <span className="flex flex-1 text-left line-clamp-1">
+              {typeFilter === "all" ? "All Types" : TASK_TYPE_LABELS[typeFilter as TaskType]}
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
@@ -843,7 +846,7 @@ export default function AdminTasksPage() {
       </div>
 
       {/* Table */}
-      <div className="mt-3">
+      <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -1,7 +1,7 @@
 export {
   useSubmissions,
   useSubmissionsByTask,
-  useSubmissionsByWorker,
+  useSubmissionsByUser,
   useCreateSubmission,
   useReviewSubmission,
 } from "./hooks";

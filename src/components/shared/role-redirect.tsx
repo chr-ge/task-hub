@@ -11,8 +11,8 @@ export function RoleRedirect() {
   useEffect(() => {
     if (user?.role === "admin") {
       router.replace("/admin/tasks");
-    } else if (user?.role === "worker") {
-      router.replace("/worker");
+    } else if (user?.role === "user") {
+      router.replace("/user");
     }
   }, [user, router]);
 

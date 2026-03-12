@@ -4,7 +4,7 @@ import { z } from "zod";
 // Enums
 // ---------------------------------------------------------------------------
 
-export const UserRoleSchema = z.enum(["admin", "worker"]);
+export const UserRoleSchema = z.enum(["admin", "user"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const TaskTypeSchema = z.enum([
@@ -114,7 +114,7 @@ export type SubmissionData = z.infer<typeof SubmissionDataSchema>;
 export const SubmissionSchema = z.object({
   id: z.string().uuid(),
   task_id: z.string().uuid(),
-  worker_id: z.string().uuid(),
+  user_id: z.string().uuid(),
   status: SubmissionStatusSchema,
   data: SubmissionDataSchema,
   submitted_at: z.string().datetime(),
@@ -124,12 +124,12 @@ export const SubmissionSchema = z.object({
 export type Submission = z.infer<typeof SubmissionSchema>;
 
 // ---------------------------------------------------------------------------
-// SubmissionFormValues — what a worker fills in (no server-managed fields)
+// SubmissionFormValues — what a user fills in (no server-managed fields)
 // ---------------------------------------------------------------------------
 
 export const SubmissionFormValuesSchema = SubmissionSchema.omit({
   id: true,
-  worker_id: true,
+  user_id: true,
   status: true,
   submitted_at: true,
   reviewed_at: true,
