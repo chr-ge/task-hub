@@ -31,7 +31,7 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Brand panel — desktop only */}
-      <div className="hidden w-[40%] flex-col justify-center bg-muted/50 px-12 lg:flex">
+      <div className="hidden w-[40%] flex-col justify-center bg-muted px-12 lg:flex">
         <div className="animate-in-fade">
           <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-sm font-bold text-primary-foreground">
             T
@@ -46,7 +46,7 @@ export function LoginScreen() {
       </div>
 
       {/* User picker */}
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
+      <div className="flex flex-1 flex-col items-center justify-center bg-card px-4 py-12">
         <div className="w-full max-w-sm">
           {/* Mobile header */}
           <div className="mb-8 lg:hidden">

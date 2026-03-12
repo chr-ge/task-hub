@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
+import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs";
 import { Loader2Icon, CheckIcon, XIcon, LayersIcon, InboxIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -113,9 +114,20 @@ function StatusBadge({ status }: { status: SubmissionStatus }) {
 // Task type badge
 // ---------------------------------------------------------------------------
 
+const TASK_TYPE_COLORS: Record<Task["task_type"], { bg: string; text: string }> = {
+  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
+  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
+  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
+};
+
 function TaskTypeBadge({ type }: { type: Task["task_type"] }) {
+  const colors = TASK_TYPE_COLORS[type];
   return (
-    <Badge variant="outline" className="font-normal">
+    <Badge
+      variant="outline"
+      className="border-transparent font-normal"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
       {taskTypeLabel(type)}
     </Badge>
   );
@@ -468,8 +480,8 @@ function Pagination({
 // ---------------------------------------------------------------------------
 
 export default function AdminSubmissionsPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [groupByTask, setGroupByTask] = useState(false);
+  const [statusFilter, setStatusFilter] = useQueryState("status", parseAsStringLiteral(["all", "pending", "approved", "rejected"] as const).withDefault("all").withOptions({ clearOnDefault: true }));
+  const [groupByTask, setGroupByTask] = useQueryState("grouped", parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true }));
   const [page, setPage] = useState(0);
 
   const {
@@ -530,10 +542,10 @@ export default function AdminSubmissionsPage() {
   // Reset page when filter changes
   const handleFilterChange = useCallback(
     (value: unknown) => {
-      setStatusFilter(value as StatusFilter);
+      void setStatusFilter(value as StatusFilter);
       setPage(0);
     },
-    [],
+    [setStatusFilter],
   );
 
   const isLoading = submissionsLoading || tasksLoading;
@@ -575,7 +587,7 @@ export default function AdminSubmissionsPage() {
           size="sm"
           variant={groupByTask ? "secondary" : "outline"}
           onClick={() => {
-            setGroupByTask((prev) => !prev);
+            void setGroupByTask(!groupByTask);
             setPage(0);
           }}
         >

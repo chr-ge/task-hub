@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
+import { useQueryState } from "nuqs";
 import {
   useReactTable,
   getCoreRowModel,
@@ -80,10 +81,10 @@ const TASK_TYPE_LABELS: Record<TaskType, string> = {
   social_media_liking: "Social Media Liking",
 };
 
-const TASK_TYPE_BADGE_VARIANT: Record<TaskType, "default" | "secondary" | "outline"> = {
-  social_media_posting: "default",
-  email_sending: "secondary",
-  social_media_liking: "outline",
+const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> = {
+  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
+  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
+  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
 };
 
 const ALL_TASK_TYPES: TaskType[] = [
@@ -343,21 +344,41 @@ function BulkEditDialog({
 
 function TableSkeleton() {
   return (
-    <div className="space-y-2">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 px-2 py-2">
-          <Skeleton className="h-4 w-4 rounded" />
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-5 w-24 rounded-full" />
-          <Skeleton className="h-4 w-12" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-14" />
-          <Skeleton className="h-4 w-14" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-8" />
-        </div>
-      ))}
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead style={{ width: 32 }}><Skeleton className="h-4 w-4" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-10" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-14" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead style={{ width: 40 }} />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TableRow key={i}>
+              <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -426,7 +447,7 @@ export default function AdminTasksPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useQueryState("q", { defaultValue: "", clearOnDefault: true });
 
   // Composer state
   const [composerOpen, setComposerOpen] = useState(false);
@@ -440,7 +461,7 @@ export default function AdminTasksPage() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   // Task type filter
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useQueryState("type", { defaultValue: "all", clearOnDefault: true });
 
   // Handlers
   const handleEdit = useCallback((task: Task) => {
@@ -498,13 +519,9 @@ export default function AdminTasksPage() {
           <SortableHeader column={column}>Title</SortableHeader>
         ),
         cell: ({ row }) => {
-          const isDeleted = row.original.deleted_at !== null;
           return (
             <span
-              className={cn(
-                "max-w-[200px] truncate font-medium",
-                isDeleted && "text-muted-foreground line-through",
-              )}
+              className="max-w-[200px] truncate font-medium"
               title={row.original.title}
             >
               {row.original.title}
@@ -519,7 +536,11 @@ export default function AdminTasksPage() {
         cell: ({ row }) => {
           const type = row.original.task_type;
           return (
-            <Badge variant={TASK_TYPE_BADGE_VARIANT[type]}>
+            <Badge
+              variant="outline"
+              className="border-transparent"
+              style={{ backgroundColor: TASK_TYPE_COLORS[type].bg, color: TASK_TYPE_COLORS[type].text }}
+            >
               {TASK_TYPE_LABELS[type]}
             </Badge>
           );
@@ -592,10 +613,6 @@ export default function AdminTasksPage() {
         id: "status",
         header: "Status",
         cell: ({ row }) => {
-          const isDeleted = row.original.deleted_at !== null;
-          if (isDeleted) {
-            return <Badge variant="destructive">Deleted</Badge>;
-          }
           const counts =
             submissionCountsMap.get(row.original.id) ?? EMPTY_COUNTS;
           const slotsLeft = Math.max(0, row.original.amount - counts.approved);
@@ -673,8 +690,9 @@ export default function AdminTasksPage() {
   // the Select uses "all" as a sentinel which doesn't play well with column
   // filter values).
   const filteredTasks = useMemo(() => {
-    if (typeFilter === "all") return tasks;
-    return tasks.filter((t) => t.task_type === typeFilter);
+    const active = tasks.filter((t) => t.deleted_at === null);
+    if (typeFilter === "all") return active;
+    return active.filter((t) => t.task_type === typeFilter);
   }, [tasks, typeFilter]);
 
   // Table instance
@@ -690,7 +708,7 @@ export default function AdminTasksPage() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: (value: string) => void setGlobalFilter(value),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -710,68 +728,7 @@ export default function AdminTasksPage() {
     [rowSelection],
   );
 
-  // Loading state
-  if (tasksQuery.isLoading || submissionsQuery.isLoading) {
-    return (
-      <div className="px-6 pt-8 pb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1>Task Management</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage your tasks, create new ones, and track progress.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6">
-          <TableSkeleton />
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (tasksQuery.isError) {
-    return (
-      <div className="px-6 pt-8 pb-6">
-        <div>
-          <h1>Task Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your tasks, create new ones, and track progress.
-          </p>
-        </div>
-        <ErrorState
-          message={
-            tasksQuery.error instanceof Error
-              ? tasksQuery.error.message
-              : "Failed to load tasks."
-          }
-          onRetry={() => void tasksQuery.refetch()}
-        />
-      </div>
-    );
-  }
-
-  // Empty state
-  if (tasks.length === 0) {
-    return (
-      <div className="px-6 pt-8 pb-6">
-        <div>
-          <h1>Task Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your tasks, create new ones, and track progress.
-          </p>
-        </div>
-        <div className="animate-in-up">
-          <EmptyState onCreateClick={handleCreate} />
-        </div>
-        <TaskComposer
-          open={composerOpen}
-          onOpenChange={handleComposerClose}
-          task={editingTask}
-        />
-      </div>
-    );
-  }
+  const isLoading = tasksQuery.isLoading || submissionsQuery.isLoading;
 
   return (
     <div className="px-6 pt-8 pb-6">
@@ -789,18 +746,18 @@ export default function AdminTasksPage() {
         </Button>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — always visible */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {/* Search */}
         <Input
           placeholder="Search by title..."
           value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          onChange={(e) => void setGlobalFilter(e.target.value)}
           className="max-w-xs"
         />
 
         {/* Type filter */}
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "all")}>
+        <Select value={typeFilter} onValueChange={(v) => void setTypeFilter(v ?? "all")}>
           <SelectTrigger className="w-[180px]">
             <span className="flex flex-1 text-left line-clamp-1">
               {typeFilter === "all" ? "All Types" : TASK_TYPE_LABELS[typeFilter as TaskType]}
@@ -845,7 +802,34 @@ export default function AdminTasksPage() {
         <span className="text-red-600">Rejected</span>
       </div>
 
+      {/* Loading skeleton */}
+      {isLoading && (
+        <div className="mt-3">
+          <TableSkeleton />
+        </div>
+      )}
+
+      {/* Error state */}
+      {!isLoading && tasksQuery.isError && (
+        <ErrorState
+          message={
+            tasksQuery.error instanceof Error
+              ? tasksQuery.error.message
+              : "Failed to load tasks."
+          }
+          onRetry={() => void tasksQuery.refetch()}
+        />
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !tasksQuery.isError && tasks.length === 0 && (
+        <div className="animate-in-up">
+          <EmptyState onCreateClick={handleCreate} />
+        </div>
+      )}
+
       {/* Table */}
+      {!isLoading && !tasksQuery.isError && tasks.length > 0 && (<>
       <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
@@ -873,9 +857,6 @@ export default function AdminTasksPage() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() ? "selected" : undefined}
-                  className={cn(
-                    row.original.deleted_at !== null && "opacity-60",
-                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -926,6 +907,7 @@ export default function AdminTasksPage() {
           </Button>
         </div>
       </div>
+      </>)}
 
       {/* Dialogs */}
       <TaskComposer

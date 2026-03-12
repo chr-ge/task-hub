@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Mobile bottom nav */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
 
         {navItems.length > 1 && (
           <nav className="flex border-t bg-card md:hidden">

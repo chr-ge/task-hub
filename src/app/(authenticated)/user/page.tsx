@@ -1,11 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { toast } from "sonner";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { SearchIcon, LoaderIcon, InboxIcon, MousePointerClickIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, SubmissionData } from "@/lib/types";
+import {
+  SocialMediaPostingDataSchema,
+  EmailSendingDataSchema,
+  SocialMediaLikingDataSchema,
+} from "@/lib/types";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
 import { useCreateSubmission } from "@/features/submissions/hooks";
@@ -46,12 +55,11 @@ const TASK_TYPE_LABELS: Record<TaskType, string> = {
   social_media_liking: "Social Media Like",
 };
 
-const TASK_TYPE_VARIANT: Record<TaskType, "default" | "secondary" | "outline"> =
-  {
-    social_media_posting: "default",
-    email_sending: "secondary",
-    social_media_liking: "outline",
-  };
+const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> = {
+  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
+  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
+  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,8 +74,13 @@ function formatReward(reward: number): string {
 // ---------------------------------------------------------------------------
 
 function TaskTypeBadge({ taskType }: { taskType: TaskType }) {
+  const colors = TASK_TYPE_COLORS[taskType];
   return (
-    <Badge variant={TASK_TYPE_VARIANT[taskType]}>
+    <Badge
+      variant="outline"
+      className="border-transparent"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
       {TASK_TYPE_LABELS[taskType]}
     </Badge>
   );
@@ -149,6 +162,12 @@ function TaskCardSkeleton() {
 // SubmissionForm
 // ---------------------------------------------------------------------------
 
+const SUBMISSION_SCHEMAS = {
+  social_media_posting: SocialMediaPostingDataSchema,
+  email_sending: EmailSendingDataSchema,
+  social_media_liking: SocialMediaLikingDataSchema,
+} as const;
+
 function SubmissionForm({
   task,
   onSuccess,
@@ -159,76 +178,17 @@ function SubmissionForm({
   const { user } = useAuth();
   const createSubmission = useCreateSubmission();
 
-  const [postUrl, setPostUrl] = useState("");
-  const [evidenceUrl, setEvidenceUrl] = useState("");
-  const [emailContent, setEmailContent] = useState("");
+  const schema = SUBMISSION_SCHEMAS[task.task_type];
 
-  const clearForm = useCallback(() => {
-    setPostUrl("");
-    setEvidenceUrl("");
-    setEmailContent("");
-  }, []);
-
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-
-      if (!user) {
-        toast.error("You must be logged in to submit");
-        return;
-      }
-
-      let data: SubmissionData;
-
-      switch (task.task_type) {
-        case "social_media_posting":
-          data = {
-            task_type: "social_media_posting",
-            post_url: postUrl,
-            evidence_screenshot_url: evidenceUrl,
-          };
-          break;
-        case "email_sending":
-          data = {
-            task_type: "email_sending",
-            email_content: emailContent,
-            evidence_screenshot_url: evidenceUrl,
-          };
-          break;
-        case "social_media_liking":
-          data = {
-            task_type: "social_media_liking",
-            post_url: postUrl,
-            evidence_screenshot_url: evidenceUrl,
-          };
-          break;
-      }
-
-      createSubmission.mutate(
-        {
-          values: { task_id: task.id, data },
-          userId: user.id,
-        },
-        {
-          onSuccess: () => {
-            clearForm();
-            onSuccess?.();
-          },
-        }
-      );
-    },
-    [
-      user,
-      task.task_type,
-      task.id,
-      postUrl,
-      evidenceUrl,
-      emailContent,
-      createSubmission,
-      clearForm,
-      onSuccess,
-    ]
-  );
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<z.infer<typeof schema>>({
+    resolver: zodResolver(schema),
+    defaultValues: { task_type: task.task_type } as z.infer<typeof schema>,
+  });
 
   const needsPostUrl =
     task.task_type === "social_media_posting" ||
@@ -236,8 +196,28 @@ function SubmissionForm({
 
   const needsEmailContent = task.task_type === "email_sending";
 
+  function onSubmit(values: z.infer<typeof schema>) {
+    if (!user) {
+      toast.error("You must be logged in to submit");
+      return;
+    }
+
+    createSubmission.mutate(
+      {
+        values: { task_id: task.id, data: values as SubmissionData },
+        userId: user.id,
+      },
+      {
+        onSuccess: () => {
+          reset();
+          onSuccess?.();
+        },
+      }
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <h3 className="text-sm font-semibold">Submit your work</h3>
 
       {needsPostUrl && (
@@ -247,10 +227,11 @@ function SubmissionForm({
             id="post-url"
             type="url"
             placeholder="https://..."
-            value={postUrl}
-            onChange={(e) => setPostUrl(e.target.value)}
-            required
+            {...register("post_url" as never)}
           />
+          {"post_url" in errors && errors.post_url && (
+            <p className="text-xs text-destructive">{errors.post_url.message as string}</p>
+          )}
         </div>
       )}
 
@@ -260,10 +241,11 @@ function SubmissionForm({
           <Textarea
             id="email-content"
             placeholder="Paste the email content you sent..."
-            value={emailContent}
-            onChange={(e) => setEmailContent(e.target.value)}
-            required
+            {...register("email_content" as never)}
           />
+          {"email_content" in errors && errors.email_content && (
+            <p className="text-xs text-destructive">{errors.email_content.message as string}</p>
+          )}
         </div>
       )}
 
@@ -273,10 +255,11 @@ function SubmissionForm({
           id="evidence-url"
           type="url"
           placeholder="https://..."
-          value={evidenceUrl}
-          onChange={(e) => setEvidenceUrl(e.target.value)}
-          required
+          {...register("evidence_screenshot_url" as never)}
         />
+        {"evidence_screenshot_url" in errors && errors.evidence_screenshot_url && (
+          <p className="text-xs text-destructive">{errors.evidence_screenshot_url.message as string}</p>
+        )}
       </div>
 
       <Button type="submit" disabled={createSubmission.isPending}>
@@ -349,9 +332,9 @@ export default function UserTasksPage() {
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortMode>("latest");
-  const [page, setPage] = useState(0);
+  const [search, setSearch] = useQueryState("q", { defaultValue: "", clearOnDefault: true });
+  const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["latest", "highest_reward"] as const).withDefault("latest").withOptions({ clearOnDefault: true }));
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Filter and sort
   const filteredTasks = useMemo(() => {
@@ -378,31 +361,46 @@ export default function UserTasksPage() {
     return result;
   }, [tasks, search, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages - 1);
-  const pagedTasks = filteredTasks.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE
-  );
+  const visibleTasks = filteredTasks.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredTasks.length;
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setVisibleCount((c) => c + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const selectedTask = useMemo(() => {
     if (!selectedTaskId || !tasks) return null;
     return tasks.find((t) => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
 
-  // Reset page when search/sort changes
+  // Reset visible count when search/sort changes
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(e.target.value);
-      setPage(0);
+      void setSearch(e.target.value);
+      setVisibleCount(PAGE_SIZE);
     },
-    []
+    [setSearch]
   );
 
   const handleSortChange = useCallback((mode: SortMode) => {
-    setSort(mode);
-    setPage(0);
-  }, []);
+    void setSort(mode);
+    setVisibleCount(PAGE_SIZE);
+  }, [setSort]);
 
   // Desktop: select task; Mobile: open sheet
   const handleTaskClick = useCallback(
@@ -508,18 +506,18 @@ export default function UserTasksPage() {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Task list */}
         <div
           className={cn(
-            "flex flex-col overflow-hidden",
+            "flex min-h-0 flex-col",
             // On desktop, take 40% when a task is selected, otherwise full
             "w-full md:w-2/5 md:border-r"
           )}
         >
-          <ScrollArea className="flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="grid gap-3 p-4">
-              {pagedTasks.length === 0 ? (
+              {visibleTasks.length === 0 ? (
                 <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
                   <div className="rounded-full bg-muted p-3">
                     <InboxIcon className="size-5 text-muted-foreground" />
@@ -534,7 +532,7 @@ export default function UserTasksPage() {
                   </div>
                 </div>
               ) : (
-                pagedTasks.map((task, i) => (
+                visibleTasks.map((task, i) => (
                   <TaskCard
                     key={task.id}
                     task={task}
@@ -544,35 +542,18 @@ export default function UserTasksPage() {
                   />
                 ))
               )}
+              {/* Infinite scroll sentinel / end-of-list */}
+              {hasMore ? (
+                <div ref={sentinelRef} className="flex justify-center py-4">
+                  <LoaderIcon className="size-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredTasks.length > 0 ? (
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  You&apos;ve reached the end
+                </p>
+              ) : null}
             </div>
-          </ScrollArea>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-2.5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= totalPages - 1}
-                onClick={() =>
-                  setPage((p) => Math.min(totalPages - 1, p + 1))
-                }
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Desktop detail panel */}

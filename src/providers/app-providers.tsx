@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import QueryProvider from "./query-provider";
 import { AuthProvider } from "@/features/auth";
 import { Toaster } from "@/components/ui/sonner";
@@ -16,11 +17,13 @@ export default function AppProviders({
   }, []);
 
   return (
-    <QueryProvider>
-      <AuthProvider>
-        {children}
-        <Toaster />
-      </AuthProvider>
-    </QueryProvider>
+    <NuqsAdapter>
+      <QueryProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
+      </QueryProvider>
+    </NuqsAdapter>
   );
 }

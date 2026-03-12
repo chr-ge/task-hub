@@ -85,7 +85,7 @@ export type SocialMediaPostingData = z.infer<
 
 export const EmailSendingDataSchema = z.object({
   task_type: z.literal("email_sending"),
-  email_content: z.string(),
+  email_content: z.string().min(10, "Must be at least 10 characters"),
   evidence_screenshot_url: z.string().url(),
 });
 
