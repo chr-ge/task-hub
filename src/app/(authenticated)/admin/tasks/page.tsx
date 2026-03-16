@@ -24,6 +24,10 @@ import {
   PlusIcon,
   ListFilterIcon,
   Loader2Icon,
+  CheckCircle2Icon,
+  ClockIcon,
+  XCircleIcon,
+  BarChart3Icon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -70,6 +74,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -353,10 +364,7 @@ function TableSkeleton() {
             <TableHead><Skeleton className="h-4 w-10" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-24" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-14" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead style={{ width: 40 }} />
           </TableRow>
@@ -369,9 +377,6 @@ function TableSkeleton() {
               <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-4 w-8" /></TableCell>
               <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-4 w-14" /></TableCell>
               <TableCell><Skeleton className="h-4 w-16" /></TableCell>
               <TableCell><Skeleton className="h-4 w-6" /></TableCell>
@@ -429,6 +434,177 @@ function ErrorState({
 }
 
 // ---------------------------------------------------------------------------
+// Task detail panel
+// ---------------------------------------------------------------------------
+
+function TaskDetailPanel({
+  task,
+  counts,
+  onEdit,
+  onDelete,
+}: {
+  task: Task;
+  counts: SubmissionCounts;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const slotsLeft = Math.max(0, task.amount - counts.approved);
+  const isCompleted = slotsLeft === 0;
+  const progress = task.amount > 0 ? Math.min(100, (counts.approved / task.amount) * 100) : 0;
+
+  return (
+    <div className="flex h-full flex-col">
+      <SheetHeader className="border-b">
+        <SheetTitle className="pr-8 text-lg">{task.title}</SheetTitle>
+        <SheetDescription className="mt-1.5 flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="border-transparent"
+            style={{
+              backgroundColor: TASK_TYPE_COLORS[task.task_type].bg,
+              color: TASK_TYPE_COLORS[task.task_type].text,
+            }}
+          >
+            {TASK_TYPE_LABELS[task.task_type]}
+          </Badge>
+          <Badge variant={isCompleted ? "secondary" : "outline"}>
+            {isCompleted ? "Completed" : "Active"}
+          </Badge>
+        </SheetDescription>
+      </SheetHeader>
+
+      <div className="flex-1 space-y-8 overflow-y-auto p-4">
+        {/* Submissions overview */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Submissions
+          </h4>
+
+          {/* Progress bar */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                {counts.approved} of {task.amount} slots filled
+              </span>
+              <span className="font-medium tabular-nums">{Math.round(progress)}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  isCompleted ? "bg-emerald-500" : "bg-primary",
+                )}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+              <BarChart3Icon className="size-3.5 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-sm font-medium tabular-nums">{counts.total}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+              <CheckCircle2Icon className="size-3.5 text-emerald-600" />
+              <div>
+                <p className="text-xs text-muted-foreground">Approved</p>
+                <p className="text-sm font-medium tabular-nums text-emerald-600">{counts.approved}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+              <ClockIcon className="size-3.5 text-amber-600" />
+              <div>
+                <p className="text-xs text-muted-foreground">Pending</p>
+                <p className="text-sm font-medium tabular-nums text-amber-600">{counts.pending}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+              <XCircleIcon className="size-3.5 text-red-600" />
+              <div>
+                <p className="text-xs text-muted-foreground">Rejected</p>
+                <p className="text-sm font-medium tabular-nums text-red-600">{counts.rejected}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-2.5">
+            <span className="text-xs text-muted-foreground">Slots remaining</span>
+            <span className="text-sm font-medium tabular-nums">{slotsLeft}</span>
+          </div>
+        </div>
+
+        {/* Task details */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Details
+          </h4>
+
+          <div className="space-y-2 text-sm">
+            {task.description && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Description</p>
+                <p className="mt-0.5 leading-relaxed">{task.description}</p>
+              </div>
+            )}
+            {task.details && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Details</p>
+                <p className="mt-0.5 leading-relaxed">{task.details}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Amount</p>
+              <p className="font-medium tabular-nums">{task.amount}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Reward</p>
+              <p className="font-medium tabular-nums">${task.reward.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Campaign ID</p>
+              <p className="font-medium break-all text-xs">{task.campaign_id}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Multiple submissions</p>
+              <p className="font-medium">{task.allow_multiple_submissions ? "Yes" : "No"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Created</p>
+              <p className="font-medium">{new Date(task.created_at).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Updated</p>
+              <p className="font-medium">{new Date(task.updated_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions footer */}
+      <div className="border-t p-4">
+        <div className="flex gap-2">
+          <Button size="sm" className="flex-1" onClick={onEdit}>
+            <PencilIcon className="size-3.5" />
+            Edit Task
+          </Button>
+          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={onDelete}>
+            <Trash2Icon className="size-3.5" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page component
 // ---------------------------------------------------------------------------
 
@@ -459,6 +635,9 @@ export default function AdminTasksPage() {
 
   // Bulk edit dialog state
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+
+  // Detail panel state
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Task type filter
   const [typeFilter, setTypeFilter] = useQueryState("type", { defaultValue: "all", clearOnDefault: true });
@@ -503,11 +682,13 @@ export default function AdminTasksPage() {
           />
         ),
         cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(checked) => row.toggleSelected(!!checked)}
-            aria-label="Select row"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(checked) => row.toggleSelected(!!checked)}
+              aria-label="Select row"
+            />
+          </div>
         ),
         enableSorting: false,
         enableGlobalFilter: false,
@@ -571,60 +752,6 @@ export default function AdminTasksPage() {
         enableGlobalFilter: false,
       },
       {
-        id: "submissions",
-        header: "Submissions",
-        cell: ({ row }) => {
-          const counts =
-            submissionCountsMap.get(row.original.id) ?? EMPTY_COUNTS;
-          return (
-            <div className="flex items-center gap-1.5 text-xs tabular-nums">
-              <span title="Total">{counts.total}</span>
-              <span className="text-muted-foreground">/</span>
-              <span className="text-green-600" title="Approved">
-                {counts.approved}
-              </span>
-              <span className="text-muted-foreground">/</span>
-              <span className="text-yellow-600" title="Pending">
-                {counts.pending}
-              </span>
-              <span className="text-muted-foreground">/</span>
-              <span className="text-red-600" title="Rejected">
-                {counts.rejected}
-              </span>
-            </div>
-          );
-        },
-        enableSorting: false,
-        enableGlobalFilter: false,
-      },
-      {
-        id: "slots_left",
-        header: "Slots Left",
-        cell: ({ row }) => {
-          const counts =
-            submissionCountsMap.get(row.original.id) ?? EMPTY_COUNTS;
-          const slotsLeft = Math.max(0, row.original.amount - counts.approved);
-          return <span className="tabular-nums">{slotsLeft}</span>;
-        },
-        enableSorting: false,
-        enableGlobalFilter: false,
-      },
-      {
-        id: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const counts =
-            submissionCountsMap.get(row.original.id) ?? EMPTY_COUNTS;
-          const slotsLeft = Math.max(0, row.original.amount - counts.approved);
-          if (slotsLeft === 0) {
-            return <Badge variant="secondary">Completed</Badge>;
-          }
-          return <Badge variant="outline">Active</Badge>;
-        },
-        enableSorting: false,
-        enableGlobalFilter: false,
-      },
-      {
         accessorKey: "campaign_id",
         header: "Campaign",
         cell: ({ row }) => (
@@ -654,6 +781,7 @@ export default function AdminTasksPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -677,13 +805,14 @@ export default function AdminTasksPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         ),
         enableSorting: false,
         enableGlobalFilter: false,
         size: 40,
       },
     ],
-    [submissionCountsMap, handleEdit, handleDelete],
+    [handleEdit, handleDelete],
   );
 
   // Filtered data for task type filter (handled outside tanstack because
@@ -733,49 +862,52 @@ export default function AdminTasksPage() {
   return (
     <div className="px-6 pt-8 pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1>Task Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your tasks, create new ones, and track progress.
           </p>
         </div>
-        <Button onClick={handleCreate}>
+        <Button onClick={handleCreate} className="shrink-0">
           <PlusIcon className="size-4" />
-          Create Task
+          <span className="hidden sm:inline">Create Task</span>
+          <span className="sm:hidden">Create</span>
         </Button>
       </div>
 
       {/* Toolbar — always visible */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <Input
-          placeholder="Search by title..."
-          value={globalFilter}
-          onChange={(e) => void setGlobalFilter(e.target.value)}
-          className="max-w-xs"
-        />
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* Search */}
+          <Input
+            placeholder="Search by title..."
+            value={globalFilter}
+            onChange={(e) => void setGlobalFilter(e.target.value)}
+            className="min-w-0 flex-1 sm:max-w-xs"
+          />
 
-        {/* Type filter */}
-        <Select value={typeFilter} onValueChange={(v) => void setTypeFilter(v ?? "all")}>
-          <SelectTrigger className="w-[180px]">
-            <span className="flex flex-1 text-left line-clamp-1">
-              {typeFilter === "all" ? "All Types" : TASK_TYPE_LABELS[typeFilter as TaskType]}
-            </span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {ALL_TASK_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                {TASK_TYPE_LABELS[type]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {/* Type filter */}
+          <Select value={typeFilter} onValueChange={(v) => void setTypeFilter(v ?? "all")}>
+            <SelectTrigger className="w-[140px] shrink-0 sm:w-[180px]">
+              <span className="flex flex-1 text-left line-clamp-1">
+                {typeFilter === "all" ? "All Types" : TASK_TYPE_LABELS[typeFilter as TaskType]}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {ALL_TASK_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {TASK_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Bulk actions */}
         {selectedIds.length > 0 && (
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 sm:ml-auto">
             <span className="text-sm text-muted-foreground">
               {selectedIds.length} selected
             </span>
@@ -788,18 +920,6 @@ export default function AdminTasksPage() {
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Submissions legend */}
-      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-        <span>Submissions:</span>
-        <span>Total</span>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-green-600">Approved</span>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-yellow-600">Pending</span>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-red-600">Rejected</span>
       </div>
 
       {/* Loading skeleton */}
@@ -857,6 +977,8 @@ export default function AdminTasksPage() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() ? "selected" : undefined}
+                  className={cn("cursor-pointer", selectedTask?.id === row.original.id && "bg-muted/50")}
+                  onClick={() => setSelectedTask(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -928,6 +1050,31 @@ export default function AdminTasksPage() {
         selectedIds={selectedIds}
         onSuccess={() => setRowSelection({})}
       />
+
+      {/* Task detail sheet */}
+      <Sheet
+        open={selectedTask !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTask(null);
+        }}
+      >
+        <SheetContent side="right" className="w-full p-0 sm:max-w-md">
+          {selectedTask && (
+            <TaskDetailPanel
+              task={selectedTask}
+              counts={submissionCountsMap.get(selectedTask.id) ?? EMPTY_COUNTS}
+              onEdit={() => {
+                handleEdit(selectedTask);
+                setSelectedTask(null);
+              }}
+              onDelete={() => {
+                handleDelete(selectedTask);
+                setSelectedTask(null);
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

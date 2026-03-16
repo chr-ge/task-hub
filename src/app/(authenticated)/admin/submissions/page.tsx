@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs";
-import { Loader2Icon, CheckIcon, XIcon, LayersIcon, InboxIcon } from "lucide-react";
+import { Loader2Icon, CheckIcon, XIcon, LayersIcon, InboxIcon, ExternalLinkIcon, ImageIcon, MailIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Submission, SubmissionStatus, Task, User } from "@/lib/types";
@@ -21,6 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -202,7 +209,6 @@ function SkeletonRows({ count }: { count: number }) {
           <TableCell><Skeleton className="h-4 w-14" /></TableCell>
           <TableCell><Skeleton className="h-4 w-16" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-40" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
         </TableRow>
@@ -222,6 +228,8 @@ function FlatTable({
   reviewMutation,
   page,
   showActions = true,
+  onSelect,
+  selectedId,
 }: {
   submissions: Submission[];
   taskMap: Map<string, Task>;
@@ -229,6 +237,8 @@ function FlatTable({
   reviewMutation: ReturnType<typeof useReviewSubmission>;
   page: number;
   showActions?: boolean;
+  onSelect: (submission: Submission) => void;
+  selectedId: string | null;
 }) {
   const start = page * PAGE_SIZE;
   const pageItems = submissions.slice(start, start + PAGE_SIZE);
@@ -254,7 +264,6 @@ function FlatTable({
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Submitted</TableHead>
-            <TableHead>Data</TableHead>
             <TableHead>Reviewed</TableHead>
             {showActions && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
@@ -263,7 +272,11 @@ function FlatTable({
           {pageItems.map((s) => {
             const task = taskMap.get(s.task_id);
             return (
-              <TableRow key={s.id}>
+              <TableRow
+                key={s.id}
+                className={cn("cursor-pointer", selectedId === s.id && "bg-muted/50")}
+                onClick={() => onSelect(s)}
+              >
                 <TableCell className="font-medium">
                   {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
                 </TableCell>
@@ -278,9 +291,6 @@ function FlatTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(s.submitted_at)}
-                </TableCell>
-                <TableCell className="max-w-[260px] truncate text-muted-foreground">
-                  {getSubmissionPreview(s.data)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
@@ -325,12 +335,16 @@ function GroupedView({
   userMap,
   reviewMutation,
   showActions = true,
+  onSelect,
+  selectedId,
 }: {
   submissions: Submission[];
   taskMap: Map<string, Task>;
   userMap: Map<string, string>;
   reviewMutation: ReturnType<typeof useReviewSubmission>;
   showActions?: boolean;
+  onSelect: (submission: Submission) => void;
+  selectedId: string | null;
 }) {
   const groups = useMemo(() => {
     const groupMap = new Map<string, Submission[]>();
@@ -396,14 +410,17 @@ function GroupedView({
                 <TableHead>User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
-                <TableHead>Data</TableHead>
                 <TableHead>Reviewed</TableHead>
                 {showActions && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {g.submissions.map((s) => (
-                <TableRow key={s.id}>
+                <TableRow
+                  key={s.id}
+                  className={cn("cursor-pointer", selectedId === s.id && "bg-muted/50")}
+                  onClick={() => onSelect(s)}
+                >
                   <TableCell className="font-medium">
                     {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
                   </TableCell>
@@ -412,9 +429,6 @@ function GroupedView({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(s.submitted_at)}
-                  </TableCell>
-                  <TableCell className="max-w-[260px] truncate text-muted-foreground">
-                    {getSubmissionPreview(s.data)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {s.reviewed_at ? formatDate(s.reviewed_at) : "\u2014"}
@@ -484,6 +498,166 @@ function Pagination({
 }
 
 // ---------------------------------------------------------------------------
+// Submission detail panel
+// ---------------------------------------------------------------------------
+
+function SubmissionDetailPanel({
+  submission,
+  task,
+  userName,
+  reviewMutation,
+}: {
+  submission: Submission;
+  task: Task | undefined;
+  userName: string;
+  reviewMutation: ReturnType<typeof useReviewSubmission>;
+}) {
+  const data = submission.data;
+
+  return (
+    <div className="flex h-full flex-col">
+      <SheetHeader className="border-b">
+        <SheetTitle>Submission Details</SheetTitle>
+        <SheetDescription>
+          Submitted by {userName} on {formatDate(submission.submitted_at)}
+        </SheetDescription>
+      </SheetHeader>
+
+      <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        {/* Status */}
+        <div className="flex items-center gap-2">
+          <StatusBadge status={submission.status} />
+          {submission.reviewed_at && (
+            <span className="text-xs text-muted-foreground">
+              Reviewed {formatDate(submission.reviewed_at)}
+            </span>
+          )}
+        </div>
+
+        {/* Task info */}
+        <div className="space-y-1.5">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Task
+          </h4>
+          <p className="text-sm font-medium">{task?.title ?? "Unknown task"}</p>
+          {task && (
+            <div className="flex items-center gap-2">
+              <TaskTypeBadge type={task.task_type} />
+              <span className="text-xs text-muted-foreground">
+                ${task.reward.toFixed(2)} reward
+              </span>
+            </div>
+          )}
+          {task?.description && (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {task.description}
+            </p>
+          )}
+        </div>
+
+        {/* Submission data */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Submission Data
+          </h4>
+
+          {(data.task_type === "social_media_posting" ||
+            data.task_type === "social_media_liking") && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <ExternalLinkIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Post URL</p>
+                  <p className="mt-0.5 break-all text-sm">{data.post_url}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <ImageIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Evidence Screenshot</p>
+                  <p className="mt-0.5 break-all text-sm">{data.evidence_screenshot_url}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {data.task_type === "email_sending" && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <MailIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Email Content</p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm">{data.email_content}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <ImageIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Evidence Screenshot</p>
+                  <p className="mt-0.5 break-all text-sm">{data.evidence_screenshot_url}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Worker info */}
+        <div className="space-y-1.5">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Worker
+          </h4>
+          <p className="text-sm">{userName}</p>
+          <p className="text-xs text-muted-foreground">ID: {submission.user_id}</p>
+        </div>
+      </div>
+
+      {/* Actions footer */}
+      {submission.status === "pending" && (
+        <div className="border-t p-4">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={reviewMutation.isPending && reviewMutation.variables?.id === submission.id}
+              onClick={() =>
+                reviewMutation.mutate({ id: submission.id, status: "approved" })
+              }
+            >
+              {reviewMutation.isPending &&
+              reviewMutation.variables?.id === submission.id &&
+              reviewMutation.variables?.status === "approved" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <CheckIcon className="size-3.5" />
+              )}
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              disabled={reviewMutation.isPending && reviewMutation.variables?.id === submission.id}
+              onClick={() =>
+                reviewMutation.mutate({ id: submission.id, status: "rejected" })
+              }
+            >
+              {reviewMutation.isPending &&
+              reviewMutation.variables?.id === submission.id &&
+              reviewMutation.variables?.status === "rejected" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <XIcon className="size-3.5" />
+              )}
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -507,6 +681,8 @@ export default function AdminSubmissionsPage() {
   } = useAllTasks();
 
   const reviewMutation = useReviewSubmission();
+
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   const userMap = useMemo(() => loadUserMap(), []);
 
@@ -634,7 +810,6 @@ export default function AdminSubmissionsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
-                <TableHead>Data</TableHead>
                 <TableHead>Reviewed</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -668,6 +843,8 @@ export default function AdminSubmissionsPage() {
             userMap={userMap}
             reviewMutation={reviewMutation}
             showActions={statusFilter === "all" || statusFilter === "pending"}
+            onSelect={setSelectedSubmission}
+            selectedId={selectedSubmission?.id ?? null}
           />
         ) : (
           <>
@@ -678,6 +855,8 @@ export default function AdminSubmissionsPage() {
               reviewMutation={reviewMutation}
               page={page}
               showActions={statusFilter === "all" || statusFilter === "pending"}
+              onSelect={setSelectedSubmission}
+              selectedId={selectedSubmission?.id ?? null}
             />
             <Pagination
               page={page}
@@ -687,6 +866,28 @@ export default function AdminSubmissionsPage() {
           </>
         )}
       </div>
+
+      {/* Submission detail sheet */}
+      <Sheet
+        open={selectedSubmission !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSubmission(null);
+        }}
+      >
+        <SheetContent side="right" className="sm:max-w-md w-full p-0">
+          {selectedSubmission && (
+            <SubmissionDetailPanel
+              submission={selectedSubmission}
+              task={taskMap.get(selectedSubmission.task_id)}
+              userName={
+                userMap.get(selectedSubmission.user_id) ??
+                selectedSubmission.user_id.slice(0, 8)
+              }
+              reviewMutation={reviewMutation}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
