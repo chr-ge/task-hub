@@ -32,6 +32,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, Submission } from "@/lib/types";
+import { getActivePhase, getPhaseProgress, getDripProgress } from "@/lib/derived";
 import {
   useAllTasks,
   useDeleteTask,
@@ -365,6 +366,8 @@ function TableSkeleton() {
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-14" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-14" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead style={{ width: 40 }} />
           </TableRow>
@@ -376,6 +379,8 @@ function TableSkeleton() {
               <TableCell><Skeleton className="h-4 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-14" /></TableCell>
               <TableCell><Skeleton className="h-4 w-12" /></TableCell>
               <TableCell><Skeleton className="h-4 w-14" /></TableCell>
               <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -440,11 +445,13 @@ function ErrorState({
 function TaskDetailPanel({
   task,
   counts,
+  taskSubmissions,
   onEdit,
   onDelete,
 }: {
   task: Task;
   counts: SubmissionCounts;
+  taskSubmissions: Submission[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -536,6 +543,106 @@ function TaskDetailPanel({
             <span className="text-sm font-medium tabular-nums">{slotsLeft}</span>
           </div>
         </div>
+
+        {/* Phases */}
+        {task.phases.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Phases
+            </h4>
+            <div className="space-y-2">
+              {task.phases
+                .sort((a, b) => a.phase_index - b.phase_index)
+                .map((phase) => {
+                  const phaseProgress = getPhaseProgress(phase, taskSubmissions);
+                  const isActive = getActivePhase(task, taskSubmissions)?.id === phase.id;
+                  const pct = phase.slots > 0 ? Math.min(100, (phaseProgress.approved / phase.slots) * 100) : 0;
+
+                  return (
+                    <div
+                      key={phase.id}
+                      className={cn(
+                        "rounded-lg border p-2.5",
+                        isActive ? "border-primary/30 bg-primary/5" : "bg-muted/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{phase.phase_name}</span>
+                          {isActive && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
+                              Active
+                            </Badge>
+                          )}
+                          {phaseProgress.isComplete && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-300 text-emerald-600">
+                              Complete
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {phaseProgress.approved}/{phase.slots}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            phaseProgress.isComplete ? "bg-emerald-500" : isActive ? "bg-primary" : "bg-muted-foreground/30"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span>${phase.reward.toFixed(2)} reward</span>
+                        <span>{phase.slots} slots</span>
+                        {phaseProgress.pending > 0 && (
+                          <span className="text-amber-600">{phaseProgress.pending} pending</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Drip Feed */}
+        {task.drip_feed.drip_enabled && (() => {
+          const drip = getDripProgress(task);
+          const pct = drip.totalSlots > 0 ? Math.min(100, (drip.releasedSlots / drip.totalSlots) * 100) : 0;
+          return (
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Drip Feed
+              </h4>
+              <div className="rounded-lg border bg-muted/30 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] px-1.5 py-0",
+                      drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700",
+                      drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700",
+                      drip.state === "completed" && "border-muted text-muted-foreground",
+                    )}
+                  >
+                    {drip.state}
+                  </Badge>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {drip.releasedSlots} / {drip.totalSlots} released
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span>{drip.dripAmount} slots every {drip.dripIntervalMinutes}min</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Task details */}
         <div className="space-y-3">
@@ -766,6 +873,79 @@ export default function AdminTasksPage() {
         enableGlobalFilter: false,
       },
       {
+        id: "phases",
+        header: "Phases",
+        cell: ({ row }) => {
+          const task = row.original;
+          if (task.phases.length === 0) {
+            return <span className="text-xs text-muted-foreground">&mdash;</span>;
+          }
+          const subs = submissionsQuery.data ?? [];
+          const taskSubs = subs.filter((s: Submission) => s.task_id === task.id);
+          return (
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-0.5">
+                {task.phases
+                  .sort((a, b) => a.phase_index - b.phase_index)
+                  .map((phase) => {
+                    const progress = getPhaseProgress(phase, taskSubs);
+                    return (
+                      <div
+                        key={phase.id}
+                        className={cn(
+                          "size-2 rounded-full",
+                          progress.isComplete
+                            ? "bg-emerald-500"
+                            : progress.total > 0
+                              ? "bg-amber-500"
+                              : "bg-muted-foreground/30"
+                        )}
+                        title={`${phase.phase_name}: ${progress.approved}/${phase.slots}`}
+                      />
+                    );
+                  })}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {task.phases.length}
+              </span>
+            </div>
+          );
+        },
+        enableSorting: false,
+        enableGlobalFilter: false,
+      },
+      {
+        id: "drip",
+        header: "Drip",
+        cell: ({ row }) => {
+          const task = row.original;
+          if (!task.drip_feed.drip_enabled) {
+            return <span className="text-xs text-muted-foreground">&mdash;</span>;
+          }
+          const drip = getDripProgress(task);
+          return (
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-1.5 py-0",
+                  drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700",
+                  drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700",
+                  drip.state === "completed" && "border-muted bg-muted text-muted-foreground",
+                )}
+              >
+                {drip.state}
+              </Badge>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {drip.releasedSlots}/{drip.totalSlots}
+              </span>
+            </div>
+          );
+        },
+        enableSorting: false,
+        enableGlobalFilter: false,
+      },
+      {
         accessorKey: "created_at",
         header: ({ column }) => (
           <SortableHeader column={column}>Created</SortableHeader>
@@ -812,7 +992,7 @@ export default function AdminTasksPage() {
         size: 40,
       },
     ],
-    [handleEdit, handleDelete],
+    [handleEdit, handleDelete, submissionsQuery.data],
   );
 
   // Filtered data for task type filter (handled outside tanstack because
@@ -1063,6 +1243,7 @@ export default function AdminTasksPage() {
             <TaskDetailPanel
               task={selectedTask}
               counts={submissionCountsMap.get(selectedTask.id) ?? EMPTY_COUNTS}
+              taskSubmissions={(submissionsQuery.data ?? []).filter((s) => s.task_id === selectedTask.id)}
               onEdit={() => {
                 handleEdit(selectedTask);
                 setSelectedTask(null);
