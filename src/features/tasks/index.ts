@@ -6,6 +6,8 @@ export {
   useUpdateTask,
   useDeleteTask,
   useBulkUpdateTasks,
+  useBulkCreateTasks,
+  useSimulateDripRelease,
 } from "./hooks";
 
 export { TaskComposer } from "./task-composer";

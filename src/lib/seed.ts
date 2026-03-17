@@ -11,7 +11,7 @@ const STORAGE_KEYS = {
 } as const;
 
 // Bump this when the seed schema changes to force a re-seed.
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 function randomDate(daysAgo: number, daysAgoEnd: number = 0): string {
   const now = Date.now();
@@ -106,6 +106,18 @@ interface TaskSeed {
   allow_multiple_submissions: boolean;
   campaign_index: number;
   softDeleted?: boolean;
+  // Phase 2
+  phases?: Array<{
+    phase_name: string;
+    slots: number;
+    instructions: string;
+    reward: number;
+  }>;
+  drip_feed?: {
+    drip_enabled: boolean;
+    drip_amount?: number;
+    drip_interval?: number;
+  };
 }
 
 const taskSeeds: readonly TaskSeed[] = [
@@ -116,6 +128,11 @@ const taskSeeds: readonly TaskSeed[] = [
     description: "Share a carousel post featuring 3 items from our Spring 2026 collection.",
     details: "Use hashtags #SpringStyle2026 #FreshLooks. Tag @ourstore. Include a short personal review in the caption (50+ words). Post must stay live for at least 48 hours.",
     amount: 20, reward: 8, allow_multiple_submissions: true, campaign_index: 0,
+    phases: [
+      { phase_name: "Content Creation", slots: 10, instructions: "Create the carousel post and submit draft for review.", reward: 3 },
+      { phase_name: "Publishing", slots: 8, instructions: "Publish the approved post on Instagram and submit the live link.", reward: 3 },
+      { phase_name: "Engagement", slots: 5, instructions: "Respond to at least 5 comments on your post and screenshot the engagement.", reward: 2 },
+    ],
   },
   {
     task_type: "social_media_posting",
@@ -123,6 +140,7 @@ const taskSeeds: readonly TaskSeed[] = [
     description: "Create an original tweet promoting our weekend free-shipping offer.",
     details: "Mention the code FREESHIP26. Include a link to https://ourstore.example.com/deals. Keep it under 280 characters.",
     amount: 30, reward: 4, allow_multiple_submissions: true, campaign_index: 0,
+    drip_feed: { drip_enabled: true, drip_amount: 5, drip_interval: 360 },
   },
   {
     task_type: "social_media_posting",
@@ -180,6 +198,10 @@ const taskSeeds: readonly TaskSeed[] = [
     description: "Send a personalized re-engagement email to a list of 50 inactive subscribers.",
     details: "Use the provided Mailchimp template. Personalize the greeting with the subscriber's first name.",
     amount: 50, reward: 20, allow_multiple_submissions: false, campaign_index: 1,
+    phases: [
+      { phase_name: "Draft Emails", slots: 25, instructions: "Draft personalized re-engagement emails using the template. Submit the draft for review.", reward: 8 },
+      { phase_name: "Send & Confirm", slots: 25, instructions: "Send the approved emails and submit delivery confirmation screenshots.", reward: 12 },
+    ],
   },
   {
     task_type: "email_sending",
@@ -237,6 +259,10 @@ const taskSeeds: readonly TaskSeed[] = [
     description: "Like the Instagram Reel posted on our official account today.",
     details: "Navigate to @ourbrand on Instagram. Find the latest Reel. Like it. Screenshot the liked state.",
     amount: 50, reward: 2, allow_multiple_submissions: false, campaign_index: 2,
+    phases: [
+      { phase_name: "Find & Like", slots: 30, instructions: "Navigate to @ourbrand, find the latest Reel, and like it.", reward: 1 },
+      { phase_name: "Verify & Screenshot", slots: 20, instructions: "Take a screenshot showing the liked state and submit it.", reward: 1 },
+    ],
   },
   {
     task_type: "social_media_liking",
@@ -244,6 +270,7 @@ const taskSeeds: readonly TaskSeed[] = [
     description: "Find and like 5 tweets from real users reviewing our products.",
     details: "Search for tweets mentioning @ourbrand or #OurBrandReview. Like 5 distinct tweets from different users.",
     amount: 20, reward: 5, allow_multiple_submissions: true, campaign_index: 2,
+    drip_feed: { drip_enabled: true, drip_amount: 10, drip_interval: 120 },
   },
   {
     task_type: "social_media_liking",
@@ -298,6 +325,23 @@ export const seedTasks: Task[] = taskSeeds.map((seed) => {
     ? new Date(updatedAtDate.getTime() + Math.random() * 2 * 86_400_000).toISOString()
     : null;
 
+  // Build phases with generated IDs
+  const phases = (seed.phases ?? []).map((p, i) => ({
+    id: uuidv4(),
+    phase_name: p.phase_name,
+    phase_index: i,
+    slots: p.slots,
+    instructions: p.instructions,
+    reward: p.reward,
+  }));
+
+  // Drip feed config — tasks with drip get some initial released count
+  const dripFeed = seed.drip_feed ?? { drip_enabled: false };
+  const dripReleasedCount = dripFeed.drip_enabled ? (dripFeed.drip_amount ?? 5) : 0;
+  const dripLastReleasedAt = dripFeed.drip_enabled
+    ? new Date(new Date(createdAt).getTime() + Math.random() * 86_400_000).toISOString()
+    : null;
+
   return {
     id: uuidv4(),
     task_type: seed.task_type,
@@ -308,6 +352,10 @@ export const seedTasks: Task[] = taskSeeds.map((seed) => {
     reward: seed.reward,
     allow_multiple_submissions: seed.allow_multiple_submissions,
     campaign_id: campaignIds[seed.campaign_index],
+    phases,
+    drip_feed: dripFeed,
+    drip_last_released_at: dripLastReleasedAt,
+    drip_released_count: dripReleasedCount,
     created_at: createdAt,
     updated_at: updatedAtDate.toISOString(),
     deleted_at: deletedAt,
@@ -376,9 +424,18 @@ function buildSubmissions(): Submission[] {
               new Date(submittedAt).getTime() + Math.random() * 3 * 86_400_000
             ).toISOString();
 
+      // Determine phase_id for phased tasks
+      let phaseId: string | null = null;
+      if (task.phases.length > 0) {
+        // Distribute submissions across phases round-robin style
+        const phaseIndex = j % task.phases.length;
+        phaseId = task.phases[phaseIndex].id;
+      }
+
       submissions.push({
         id: uuidv4(),
         task_id: task.id,
+        phase_id: phaseId,
         user_id: pickedUserId,
         status,
         data: buildSubmissionData(task.task_type, task.title),
