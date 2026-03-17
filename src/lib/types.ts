@@ -36,6 +36,39 @@ export const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>;
 
 // ---------------------------------------------------------------------------
+// Task Phase
+// ---------------------------------------------------------------------------
+
+export const TaskPhaseSchema = z.object({
+  id: z.string().uuid(),
+  phase_name: z.string().min(1, "Phase name is required"),
+  phase_index: z.number().int().nonnegative(),
+  slots: z.number().int().positive("Slots must be at least 1"),
+  instructions: z.string(),
+  reward: z.number().nonnegative(),
+});
+
+export type TaskPhase = z.infer<typeof TaskPhaseSchema>;
+
+export const TaskPhaseFormValuesSchema = TaskPhaseSchema.omit({ id: true });
+export type TaskPhaseFormValues = z.infer<typeof TaskPhaseFormValuesSchema>;
+
+// ---------------------------------------------------------------------------
+// Drip Feed
+// ---------------------------------------------------------------------------
+
+export const DripFeedConfigSchema = z.object({
+  drip_enabled: z.boolean(),
+  drip_amount: z.number().int().positive().optional(),
+  drip_interval: z.number().int().positive().optional(), // in minutes
+});
+
+export type DripFeedConfig = z.infer<typeof DripFeedConfigSchema>;
+
+export const DripFeedStateSchema = z.enum(["active", "waiting", "completed"]);
+export type DripFeedState = z.infer<typeof DripFeedStateSchema>;
+
+// ---------------------------------------------------------------------------
 // Task
 // ---------------------------------------------------------------------------
 
@@ -49,6 +82,11 @@ export const TaskSchema = z.object({
   reward: z.number().nonnegative(),
   allow_multiple_submissions: z.boolean(),
   campaign_id: z.string().uuid(),
+  // Phase 2 fields
+  phases: z.array(TaskPhaseSchema).default([]),
+  drip_feed: DripFeedConfigSchema.default({ drip_enabled: false }),
+  drip_last_released_at: z.string().datetime().nullable().default(null),
+  drip_released_count: z.number().int().nonnegative().default(0),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
   deleted_at: z.string().datetime().nullable(),
@@ -65,6 +103,8 @@ export const TaskFormValuesSchema = TaskSchema.omit({
   created_at: true,
   updated_at: true,
   deleted_at: true,
+  drip_last_released_at: true,
+  drip_released_count: true,
 });
 
 export type TaskFormValues = z.infer<typeof TaskFormValuesSchema>;
@@ -114,6 +154,7 @@ export type SubmissionData = z.infer<typeof SubmissionDataSchema>;
 export const SubmissionSchema = z.object({
   id: z.string().uuid(),
   task_id: z.string().uuid(),
+  phase_id: z.string().uuid().nullable().default(null),
   user_id: z.string().uuid(),
   status: SubmissionStatusSchema,
   data: SubmissionDataSchema,
