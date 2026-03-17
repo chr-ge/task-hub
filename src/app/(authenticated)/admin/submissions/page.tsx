@@ -207,6 +207,7 @@ function SkeletonRows({ count }: { count: number }) {
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-4 w-32" /></TableCell>
           <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-16" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -262,6 +263,7 @@ function FlatTable({
             <TableHead>User</TableHead>
             <TableHead>Task</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Phase</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Submitted</TableHead>
             <TableHead>Reviewed</TableHead>
@@ -285,6 +287,13 @@ function FlatTable({
                 </TableCell>
                 <TableCell>
                   {task ? <TaskTypeBadge type={task.task_type} /> : "\u2014"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {(() => {
+                    if (!s.phase_id) return "\u2014";
+                    const phase = task?.phases.find((p) => p.id === s.phase_id);
+                    return phase?.phase_name ?? "\u2014";
+                  })()}
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={s.status} />
@@ -390,6 +399,11 @@ function GroupedView({
               {g.task?.title ?? "Unknown task"}
             </span>
             {g.task && <TaskTypeBadge type={g.task.task_type} />}
+            {g.task && g.task.phases.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {g.task.phases.length} phases
+              </span>
+            )}
             <span className="ml-auto text-xs text-muted-foreground">
               {g.approvedCount}/{g.submissions.length} approved
               {g.pendingCount > 0 && (
@@ -408,6 +422,7 @@ function GroupedView({
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
+                <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Reviewed</TableHead>
@@ -423,6 +438,14 @@ function GroupedView({
                 >
                   <TableCell className="font-medium">
                     {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {(() => {
+                      if (!s.phase_id) return "\u2014";
+                      const task = taskMap.get(s.task_id);
+                      const phase = task?.phases.find((p) => p.id === s.phase_id);
+                      return phase?.phase_name ?? "\u2014";
+                    })()}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={s.status} />
@@ -554,6 +577,34 @@ function SubmissionDetailPanel({
             </p>
           )}
         </div>
+
+        {/* Phase info */}
+        {submission.phase_id && task && (() => {
+          const phase = task.phases.find((p) => p.id === submission.phase_id);
+          if (!phase) return null;
+          return (
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Phase
+              </h4>
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{phase.phase_name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Phase {phase.phase_index + 1} of {task.phases.length}
+                  </span>
+                </div>
+                {phase.instructions && (
+                  <p className="text-xs text-muted-foreground">{phase.instructions}</p>
+                )}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>${phase.reward.toFixed(2)} reward</span>
+                  <span>{phase.slots} slots</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Submission data */}
         <div className="space-y-3">
@@ -808,6 +859,7 @@ export default function AdminSubmissionsPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Reviewed</TableHead>
