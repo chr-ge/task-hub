@@ -37,6 +37,13 @@ export async function createTask(values: TaskFormValues): Promise<Task> {
   const task: Task = {
     ...values,
     id: uuidv4(),
+    phases: (values.phases ?? []).map((p) => ({
+      ...p,
+      id: p.id ?? uuidv4(),
+    })),
+    drip_feed: values.drip_feed ?? { drip_enabled: false },
+    drip_last_released_at: null,
+    drip_released_count: 0,
     created_at: now,
     updated_at: now,
     deleted_at: null,
@@ -107,4 +114,56 @@ export async function bulkUpdateTasks(
 
   writeTasks(tasks);
   return updatedTasks;
+}
+
+export async function bulkCreateTasks(
+  valuesList: TaskFormValues[],
+): Promise<Task[]> {
+  await simulateWriteDelay();
+  const now = new Date().toISOString();
+  const tasks = readTasks();
+  const created: Task[] = [];
+
+  for (const values of valuesList) {
+    const task: Task = {
+      ...values,
+      id: uuidv4(),
+      phases: (values.phases ?? []).map((p) => ({
+        ...p,
+        id: p.id ?? uuidv4(),
+      })),
+      drip_feed: values.drip_feed ?? { drip_enabled: false },
+      drip_last_released_at: null,
+      drip_released_count: 0,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    tasks.push(task);
+    created.push(task);
+  }
+
+  writeTasks(tasks);
+  return created;
+}
+
+export async function simulateDripRelease(taskId: string): Promise<Task> {
+  await simulateWriteDelay();
+  const tasks = readTasks();
+  const index = tasks.findIndex((t) => t.id === taskId);
+  if (index === -1) throw new Error(`Task with id "${taskId}" not found`);
+
+  const task = tasks[index];
+  const dripAmount = task.drip_feed.drip_amount ?? 5;
+
+  const updated: Task = {
+    ...task,
+    drip_released_count: task.drip_released_count + dripAmount,
+    drip_last_released_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  tasks[index] = updated;
+  writeTasks(tasks);
+  return updated;
 }
