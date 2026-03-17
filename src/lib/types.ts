@@ -98,13 +98,17 @@ export type Task = z.infer<typeof TaskSchema>;
 // TaskFormValues — for creating / editing a task (no server-managed fields)
 // ---------------------------------------------------------------------------
 
-export const TaskFormValuesSchema = TaskSchema.omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-  deleted_at: true,
-  drip_last_released_at: true,
-  drip_released_count: true,
+export const TaskFormValuesSchema = z.object({
+  task_type: TaskTypeSchema,
+  title: z.string(),
+  description: z.string(),
+  details: z.string(),
+  amount: z.number().int().nonnegative(),
+  reward: z.number().nonnegative(),
+  allow_multiple_submissions: z.boolean(),
+  campaign_id: z.string().uuid(),
+  phases: z.array(TaskPhaseSchema),
+  drip_feed: DripFeedConfigSchema,
 });
 
 export type TaskFormValues = z.infer<typeof TaskFormValuesSchema>;
