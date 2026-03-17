@@ -17,6 +17,7 @@ import { useSubmissionsByUser } from "@/features/submissions/hooks";
 import { getWorkerEarnings } from "@/lib/derived";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -242,8 +243,8 @@ export default function WorkerEarningsPage() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
-  const { data: tasks, isLoading: tasksLoading } = useTasks();
-  const { data: submissions, isLoading: submissionsLoading } = useSubmissionsByUser(userId);
+  const { data: tasks, isLoading: tasksLoading, isError: tasksError, refetch: refetchTasks } = useTasks();
+  const { data: submissions, isLoading: submissionsLoading, isError: subsError, refetch: refetchSubs } = useSubmissionsByUser(userId);
 
   const isLoading = tasksLoading || submissionsLoading;
 
@@ -281,6 +282,25 @@ export default function WorkerEarningsPage() {
         };
       });
   }, [submissions, tasks]);
+
+  const isError = tasksError || subsError;
+
+  if (isError && !isLoading) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+        <p className="text-sm text-destructive">Failed to load earnings data.</p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            void refetchTasks();
+            void refetchSubs();
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
