@@ -6,6 +6,7 @@ import {
   ListTodo,
   ClipboardCheck,
   Briefcase,
+  TrendingUp,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
@@ -26,6 +27,8 @@ const adminNav: NavItem[] = [
 
 const userNav: NavItem[] = [
   { label: "Tasks", href: "/user", icon: <Briefcase className="size-4" /> },
+  { label: "Earnings", href: "/user/earnings", icon: <TrendingUp className="size-4" /> },
+  { label: "Submissions", href: "/user/submissions", icon: <ClipboardCheck className="size-4" /> },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
