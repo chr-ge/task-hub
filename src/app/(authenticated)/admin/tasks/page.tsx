@@ -28,6 +28,7 @@ import {
   ClockIcon,
   XCircleIcon,
   BarChart3Icon,
+  UploadIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import {
 } from "@/features/tasks/hooks";
 import { useSubmissions } from "@/features/submissions/hooks";
 import { TaskComposer } from "@/features/tasks/task-composer";
+import { BulkUpload } from "@/features/tasks/bulk-upload";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -736,6 +738,9 @@ export default function AdminTasksPage() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
+  // Bulk upload state
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -1049,11 +1054,17 @@ export default function AdminTasksPage() {
             Manage your tasks, create new ones, and track progress.
           </p>
         </div>
-        <Button onClick={handleCreate} className="shrink-0">
-          <PlusIcon className="size-4" />
-          <span className="hidden sm:inline">Create Task</span>
-          <span className="sm:hidden">Create</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setBulkUploadOpen(true)} className="shrink-0">
+            <UploadIcon className="size-4" />
+            <span className="hidden sm:inline">Bulk Import</span>
+          </Button>
+          <Button onClick={handleCreate} className="shrink-0">
+            <PlusIcon className="size-4" />
+            <span className="hidden sm:inline">Create Task</span>
+            <span className="sm:hidden">Create</span>
+          </Button>
+        </div>
       </div>
 
       {/* Toolbar — always visible */}
@@ -1216,6 +1227,11 @@ export default function AdminTasksPage() {
         open={composerOpen}
         onOpenChange={handleComposerClose}
         task={editingTask}
+      />
+
+      <BulkUpload
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
       />
 
       <DeleteConfirmDialog
