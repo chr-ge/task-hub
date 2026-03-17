@@ -9,15 +9,16 @@ import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { SearchIcon, LoaderIcon, InboxIcon, MousePointerClickIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { Task, TaskType, SubmissionData } from "@/lib/types";
+import type { Task, TaskType, TaskPhase, SubmissionData } from "@/lib/types";
 import {
   SocialMediaPostingDataSchema,
   EmailSendingDataSchema,
   SocialMediaLikingDataSchema,
 } from "@/lib/types";
+import { getActivePhase, getWorkerVisiblePhases, getReleasedSlots, getDripFeedState } from "@/lib/derived";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
-import { useCreateSubmission } from "@/features/submissions/hooks";
+import { useCreateSubmission, useSubmissions } from "@/features/submissions/hooks";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,12 +96,18 @@ function TaskCard({
   isSelected,
   onClick,
   index,
+  activePhase,
+  availableSlots,
 }: {
   task: Task;
   isSelected: boolean;
   onClick: () => void;
   index: number;
+  activePhase: TaskPhase | null;
+  availableSlots: number;
 }) {
+  const displayReward = activePhase ? activePhase.reward : task.reward;
+
   return (
     <Card
       size="sm"
@@ -115,16 +122,21 @@ function TaskCard({
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="line-clamp-1">{task.title}</CardTitle>
           <span className="shrink-0 text-sm font-semibold text-green-600 dark:text-green-400">
-            {formatReward(task.reward)}
+            {formatReward(displayReward)}
           </span>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <TaskTypeBadge taskType={task.task_type} />
           <span className="text-xs text-muted-foreground">
-            {task.amount} slot{task.amount !== 1 ? "s" : ""} remaining
+            {availableSlots} slot{availableSlots !== 1 ? "s" : ""} available
           </span>
+          {activePhase && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {activePhase.phase_name}
+            </Badge>
+          )}
         </div>
         <p className="mt-2.5 line-clamp-2 text-sm text-muted-foreground">
           {task.description}
@@ -170,9 +182,11 @@ const SUBMISSION_SCHEMAS = {
 
 function SubmissionForm({
   task,
+  activePhaseId,
   onSuccess,
 }: {
   task: Task;
+  activePhaseId: string | null;
   onSuccess?: () => void;
 }) {
   const { user } = useAuth();
@@ -204,7 +218,7 @@ function SubmissionForm({
 
     createSubmission.mutate(
       {
-        values: { task_id: task.id, data: values as SubmissionData },
+        values: { task_id: task.id, phase_id: activePhaseId, data: values as SubmissionData },
         userId: user.id,
       },
       {
@@ -278,11 +292,19 @@ function SubmissionForm({
 
 function TaskDetail({
   task,
+  activePhase,
+  visiblePhases,
+  availableSlots,
   onSubmissionSuccess,
 }: {
   task: Task;
+  activePhase: TaskPhase | null;
+  visiblePhases: TaskPhase[];
+  availableSlots: number;
   onSubmissionSuccess?: () => void;
 }) {
+  const displayReward = activePhase ? activePhase.reward : task.reward;
+
   return (
     <div className="space-y-6">
       <div>
@@ -292,13 +314,53 @@ function TaskDetail({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="font-semibold text-green-600 dark:text-green-400">
-            {formatReward(task.reward)}
+            {formatReward(displayReward)}
           </span>
           <span>
-            {task.amount} slot{task.amount !== 1 ? "s" : ""} remaining
+            {availableSlots} slot{availableSlots !== 1 ? "s" : ""} available
           </span>
         </div>
       </div>
+
+      {/* Active phase info */}
+      {activePhase && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
+              Current Phase
+            </Badge>
+            <span className="text-sm font-medium">{activePhase.phase_name}</span>
+          </div>
+          {activePhase.instructions && (
+            <p className="text-sm text-muted-foreground">{activePhase.instructions}</p>
+          )}
+        </div>
+      )}
+
+      {/* Past phases the worker submitted to */}
+      {visiblePhases.length > 1 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Your phases</p>
+          <div className="flex items-center gap-1">
+            {visiblePhases.map((phase) => (
+              <Badge
+                key={phase.id}
+                variant={phase.id === activePhase?.id ? "default" : "secondary"}
+                className="text-[10px]"
+              >
+                {phase.phase_name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Drip feed waiting notice */}
+      {task.drip_feed.drip_enabled && getDripFeedState(task) === "waiting" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          More slots will be available soon. Check back later.
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold">Description</h3>
@@ -318,7 +380,15 @@ function TaskDetail({
 
       <Separator />
 
-      <SubmissionForm task={task} onSuccess={onSubmissionSuccess} />
+      {availableSlots > 0 ? (
+        <SubmissionForm
+          task={task}
+          activePhaseId={activePhase?.id ?? null}
+          onSuccess={onSubmissionSuccess}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">No slots currently available.</p>
+      )}
     </div>
   );
 }
@@ -328,13 +398,36 @@ function TaskDetail({
 // ---------------------------------------------------------------------------
 
 export default function UserTasksPage() {
+  const { user } = useAuth();
   const { data: tasks, isLoading, isError, refetch } = useTasks();
+  const { data: allSubmissions } = useSubmissions();
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [search, setSearch] = useQueryState("q", { defaultValue: "", clearOnDefault: true });
   const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["latest", "highest_reward"] as const).withDefault("latest").withOptions({ clearOnDefault: true }));
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Phase / drip helpers
+  const getTaskActivePhase = useCallback(
+    (task: Task): TaskPhase | null => {
+      if (task.phases.length === 0) return null;
+      return getActivePhase(task, allSubmissions ?? []);
+    },
+    [allSubmissions]
+  );
+
+  const getAvailableSlots = useCallback(
+    (task: Task): number => {
+      const released = getReleasedSlots(task);
+      if (task.phases.length > 0) {
+        const active = getActivePhase(task, allSubmissions ?? []);
+        return active ? Math.min(active.slots, released) : 0;
+      }
+      return released;
+    },
+    [allSubmissions]
+  );
 
   // Filter and sort
   const filteredTasks = useMemo(() => {
@@ -387,6 +480,12 @@ export default function UserTasksPage() {
     if (!selectedTaskId || !tasks) return null;
     return tasks.find((t) => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
+
+  // Visible phases for the selected task (active + user's past phases)
+  const selectedVisiblePhases = useMemo(() => {
+    if (!selectedTask || !user) return [];
+    return getWorkerVisiblePhases(selectedTask, allSubmissions ?? [], user.id);
+  }, [selectedTask, allSubmissions, user]);
 
   // Reset visible count when search/sort changes
   const handleSearchChange = useCallback(
@@ -461,6 +560,16 @@ export default function UserTasksPage() {
       </div>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Render helpers for selected task
+  // ---------------------------------------------------------------------------
+
+  const selectedActivePhase = selectedTask ? getTaskActivePhase(selectedTask) : null;
+  const selectedAvailableSlots = selectedTask ? getAvailableSlots(selectedTask) : 0;
+  const selectedDisplayReward = selectedTask
+    ? (selectedActivePhase ? selectedActivePhase.reward : selectedTask.reward)
+    : 0;
 
   // ---------------------------------------------------------------------------
   // Render: main
@@ -539,6 +648,8 @@ export default function UserTasksPage() {
                     isSelected={selectedTaskId === task.id}
                     onClick={() => handleTaskClick(task.id)}
                     index={i}
+                    activePhase={getTaskActivePhase(task)}
+                    availableSlots={getAvailableSlots(task)}
                   />
                 ))
               )}
@@ -560,7 +671,12 @@ export default function UserTasksPage() {
         <div className="hidden flex-1 overflow-y-auto md:block">
           {selectedTask ? (
             <div className="p-6">
-              <TaskDetail task={selectedTask} />
+              <TaskDetail
+                task={selectedTask}
+                activePhase={selectedActivePhase}
+                visiblePhases={selectedVisiblePhases}
+                availableSlots={selectedAvailableSlots}
+              />
             </div>
           ) : (
             <div className="animate-in-fade flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -585,12 +701,15 @@ export default function UserTasksPage() {
                 <SheetTitle>{selectedTask.title}</SheetTitle>
                 <SheetDescription>
                   {TASK_TYPE_LABELS[selectedTask.task_type]} &middot;{" "}
-                  {formatReward(selectedTask.reward)}
+                  {formatReward(selectedDisplayReward)}
                 </SheetDescription>
               </SheetHeader>
               <ScrollArea className="flex-1 px-4 pb-4">
                 <TaskDetail
                   task={selectedTask}
+                  activePhase={selectedActivePhase}
+                  visiblePhases={selectedVisiblePhases}
+                  availableSlots={selectedAvailableSlots}
                   onSubmissionSuccess={() => setSheetOpen(false)}
                 />
               </ScrollArea>
