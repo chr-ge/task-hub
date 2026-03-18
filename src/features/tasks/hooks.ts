@@ -12,6 +12,8 @@ import {
   updateTask,
   deleteTask,
   bulkUpdateTasks,
+  bulkCreateTasks,
+  simulateDripRelease,
 } from "@/lib/repositories";
 
 // ---------------------------------------------------------------------------
@@ -112,6 +114,32 @@ export function useBulkUpdateTasks() {
     },
     onError: () => {
       toast.error("Failed to update tasks");
+    },
+  });
+}
+
+export function useBulkCreateTasks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (valuesList: TaskFormValues[]) => bulkCreateTasks(valuesList),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Tasks created");
+    },
+    onError: () => {
+      toast.error("Failed to create tasks");
+    },
+  });
+}
+
+export function useSimulateDripRelease() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (taskId: string) => simulateDripRelease(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }

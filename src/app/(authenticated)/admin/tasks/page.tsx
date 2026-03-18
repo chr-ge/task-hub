@@ -28,10 +28,14 @@ import {
   ClockIcon,
   XCircleIcon,
   BarChart3Icon,
+  UploadIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, Submission } from "@/lib/types";
+import { TASK_TYPE_LABELS } from "@/lib/constants";
+import { TaskTypeBadge } from "@/components/shared";
+import { getActivePhase, getPhaseProgress, getDripProgress } from "@/lib/derived";
 import {
   useAllTasks,
   useDeleteTask,
@@ -39,6 +43,7 @@ import {
 } from "@/features/tasks/hooks";
 import { useSubmissions } from "@/features/submissions/hooks";
 import { TaskComposer } from "@/features/tasks/task-composer";
+import { BulkUpload } from "@/features/tasks/bulk-upload";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,17 +91,6 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  social_media_posting: "Social Media Posting",
-  email_sending: "Email Sending",
-  social_media_liking: "Social Media Liking",
-};
-
-const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
 
 const ALL_TASK_TYPES: TaskType[] = [
   "social_media_posting",
@@ -365,6 +359,8 @@ function TableSkeleton() {
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead><Skeleton className="h-4 w-14" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+            <TableHead><Skeleton className="h-4 w-14" /></TableHead>
             <TableHead><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead style={{ width: 40 }} />
           </TableRow>
@@ -376,6 +372,8 @@ function TableSkeleton() {
               <TableCell><Skeleton className="h-4 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-14" /></TableCell>
               <TableCell><Skeleton className="h-4 w-12" /></TableCell>
               <TableCell><Skeleton className="h-4 w-14" /></TableCell>
               <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -440,11 +438,13 @@ function ErrorState({
 function TaskDetailPanel({
   task,
   counts,
+  taskSubmissions,
   onEdit,
   onDelete,
 }: {
   task: Task;
   counts: SubmissionCounts;
+  taskSubmissions: Submission[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -457,16 +457,7 @@ function TaskDetailPanel({
       <SheetHeader className="border-b">
         <SheetTitle className="pr-8 text-lg">{task.title}</SheetTitle>
         <SheetDescription className="mt-1.5 flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-transparent"
-            style={{
-              backgroundColor: TASK_TYPE_COLORS[task.task_type].bg,
-              color: TASK_TYPE_COLORS[task.task_type].text,
-            }}
-          >
-            {TASK_TYPE_LABELS[task.task_type]}
-          </Badge>
+          <TaskTypeBadge type={task.task_type} short={false} />
           <Badge variant={isCompleted ? "secondary" : "outline"}>
             {isCompleted ? "Completed" : "Active"}
           </Badge>
@@ -537,6 +528,106 @@ function TaskDetailPanel({
           </div>
         </div>
 
+        {/* Phases */}
+        {task.phases.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Phases
+            </h4>
+            <div className="space-y-2">
+              {task.phases
+                .sort((a, b) => a.phase_index - b.phase_index)
+                .map((phase) => {
+                  const phaseProgress = getPhaseProgress(phase, taskSubmissions);
+                  const isActive = getActivePhase(task, taskSubmissions)?.id === phase.id;
+                  const pct = phase.slots > 0 ? Math.min(100, (phaseProgress.approved / phase.slots) * 100) : 0;
+
+                  return (
+                    <div
+                      key={phase.id}
+                      className={cn(
+                        "rounded-lg border p-2.5",
+                        isActive ? "border-primary/30 bg-primary/5" : "bg-muted/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{phase.phase_name}</span>
+                          {isActive && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
+                              Active
+                            </Badge>
+                          )}
+                          {phaseProgress.isComplete && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400">
+                              Complete
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {phaseProgress.approved}/{phase.slots}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            phaseProgress.isComplete ? "bg-emerald-500" : isActive ? "bg-primary" : "bg-muted-foreground/30"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span>${phase.reward.toFixed(2)} reward</span>
+                        <span>{phase.slots} slots</span>
+                        {phaseProgress.pending > 0 && (
+                          <span className="text-amber-600">{phaseProgress.pending} pending</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Drip Feed */}
+        {task.drip_feed.drip_enabled && (() => {
+          const drip = getDripProgress(task);
+          const pct = drip.totalSlots > 0 ? Math.min(100, (drip.releasedSlots / drip.totalSlots) * 100) : 0;
+          return (
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Drip Feed
+              </h4>
+              <div className="rounded-lg border bg-muted/30 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] px-1.5 py-0",
+                      drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+                      drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+                      drip.state === "completed" && "border-muted text-muted-foreground",
+                    )}
+                  >
+                    {drip.state}
+                  </Badge>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {drip.releasedSlots} / {drip.totalSlots} released
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span>{drip.dripAmount} slots every {drip.dripIntervalMinutes}min</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Task details */}
         <div className="space-y-3">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -594,7 +685,7 @@ function TaskDetailPanel({
             <PencilIcon className="size-3.5" />
             Edit Task
           </Button>
-          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={onDelete}>
+          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300" onClick={onDelete}>
             <Trash2Icon className="size-3.5" />
             Delete
           </Button>
@@ -628,6 +719,9 @@ export default function AdminTasksPage() {
   // Composer state
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+
+  // Bulk upload state
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -714,18 +808,9 @@ export default function AdminTasksPage() {
       {
         accessorKey: "task_type",
         header: "Type",
-        cell: ({ row }) => {
-          const type = row.original.task_type;
-          return (
-            <Badge
-              variant="outline"
-              className="border-transparent"
-              style={{ backgroundColor: TASK_TYPE_COLORS[type].bg, color: TASK_TYPE_COLORS[type].text }}
-            >
-              {TASK_TYPE_LABELS[type]}
-            </Badge>
-          );
-        },
+        cell: ({ row }) => (
+          <TaskTypeBadge type={row.original.task_type} />
+        ),
         filterFn: "equals",
         enableGlobalFilter: false,
       },
@@ -762,6 +847,79 @@ export default function AdminTasksPage() {
             {row.original.campaign_id.slice(0, 8)}...
           </span>
         ),
+        enableSorting: false,
+        enableGlobalFilter: false,
+      },
+      {
+        id: "phases",
+        header: "Phases",
+        cell: ({ row }) => {
+          const task = row.original;
+          if (task.phases.length === 0) {
+            return <span className="text-xs text-muted-foreground">&mdash;</span>;
+          }
+          const subs = submissionsQuery.data ?? [];
+          const taskSubs = subs.filter((s: Submission) => s.task_id === task.id);
+          return (
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-0.5">
+                {task.phases
+                  .sort((a, b) => a.phase_index - b.phase_index)
+                  .map((phase) => {
+                    const progress = getPhaseProgress(phase, taskSubs);
+                    return (
+                      <div
+                        key={phase.id}
+                        className={cn(
+                          "size-2 rounded-full",
+                          progress.isComplete
+                            ? "bg-emerald-500"
+                            : progress.total > 0
+                              ? "bg-amber-500"
+                              : "bg-muted-foreground/30"
+                        )}
+                        title={`${phase.phase_name}: ${progress.approved}/${phase.slots}`}
+                      />
+                    );
+                  })}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {task.phases.length}
+              </span>
+            </div>
+          );
+        },
+        enableSorting: false,
+        enableGlobalFilter: false,
+      },
+      {
+        id: "drip",
+        header: "Drip",
+        cell: ({ row }) => {
+          const task = row.original;
+          if (!task.drip_feed.drip_enabled) {
+            return <span className="text-xs text-muted-foreground">&mdash;</span>;
+          }
+          const drip = getDripProgress(task);
+          return (
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-1.5 py-0",
+                  drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+                  drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+                  drip.state === "completed" && "border-muted bg-muted text-muted-foreground",
+                )}
+              >
+                {drip.state}
+              </Badge>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {drip.releasedSlots}/{drip.totalSlots}
+              </span>
+            </div>
+          );
+        },
         enableSorting: false,
         enableGlobalFilter: false,
       },
@@ -812,7 +970,7 @@ export default function AdminTasksPage() {
         size: 40,
       },
     ],
-    [handleEdit, handleDelete],
+    [handleEdit, handleDelete, submissionsQuery.data],
   );
 
   // Filtered data for task type filter (handled outside tanstack because
@@ -869,11 +1027,17 @@ export default function AdminTasksPage() {
             Manage your tasks, create new ones, and track progress.
           </p>
         </div>
-        <Button onClick={handleCreate} className="shrink-0">
-          <PlusIcon className="size-4" />
-          <span className="hidden sm:inline">Create Task</span>
-          <span className="sm:hidden">Create</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setBulkUploadOpen(true)} className="shrink-0">
+            <UploadIcon className="size-4" />
+            <span className="hidden sm:inline">Bulk Import</span>
+          </Button>
+          <Button onClick={handleCreate} className="shrink-0">
+            <PlusIcon className="size-4" />
+            <span className="hidden sm:inline">Create Task</span>
+            <span className="sm:hidden">Create</span>
+          </Button>
+        </div>
       </div>
 
       {/* Toolbar — always visible */}
@@ -1038,6 +1202,11 @@ export default function AdminTasksPage() {
         task={editingTask}
       />
 
+      <BulkUpload
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+      />
+
       <DeleteConfirmDialog
         task={taskToDelete}
         open={deleteDialogOpen}
@@ -1063,6 +1232,7 @@ export default function AdminTasksPage() {
             <TaskDetailPanel
               task={selectedTask}
               counts={submissionCountsMap.get(selectedTask.id) ?? EMPTY_COUNTS}
+              taskSubmissions={(submissionsQuery.data ?? []).filter((s) => s.task_id === selectedTask.id)}
               onEdit={() => {
                 handleEdit(selectedTask);
                 setSelectedTask(null);

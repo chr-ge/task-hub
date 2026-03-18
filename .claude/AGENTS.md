@@ -5,7 +5,7 @@ Build a frontend-first internal micro-task platform.
 
 The product has two roles:
 - **Admin**: creates tasks, manages tasks, reviews submissions
-- **Worker**: browses tasks, views task details, and submits evidence
+- **Worker**: browses tasks, views task details, submits evidence, and tracks earnings/history
 
 This is **not** a marketplace between users. Only one admin exists. Workers do not hire each other.
 
@@ -59,7 +59,7 @@ Only these three task types exist in this assignment:
 - Email Sending
 - Social Media Liking
 
-### Task composer fields
+### Base task composer fields
 The task composer must support these fields:
 - `task_type`
 - `title`
@@ -83,19 +83,117 @@ The task composer must support these fields:
 - Post URL
 - Evidence screenshot
 
-### Scope simplification
-Ignore advanced platform concepts from the real system, including:
+## Phase 2 features
+
+### 1. Task phases
+Task phases are an add-on to the existing task model.
+They do **not** replace normal task behavior.
+
+A task may either:
+- behave like a standard single-stage task, or
+- contain multiple sequential phases
+
+Each phase must be completed before the next phase becomes active.
+A phase is complete once it has collected enough submissions to fill its slots.
+
+Each phase can have:
+- a different display name
+- a different phase index/order
+- a different number of slots
+- different worker instructions
+- a different reward
+- potentially different submission expectations within the same overall task context
+
+#### Phase fields
+Each phase should support:
+- `phase_name`
+- `phase_index`
+- `slots`
+- `instructions`
+- `reward`
+
+#### Phase behavior
+- Only one phase is active at a time
+- Workers should only see the **active** phase by default
+- Workers may see past phases **only if they have submitted in that phase**
+- Admin should see **all phases**
+- Admin should be able to edit **all phases**
+- Submissions should be viewable:
+  - at the task level
+  - at the phase level
+
+### 2. Drip feed tasks
+Drip feed is configured at the **task level** and inherited by the **currently active phase**.
+
+It controls how many slots are released over time instead of exposing all available slots immediately.
+
+#### Drip feed fields
+- `drip_enabled`
+- `drip_amount`
+- `drip_interval`
+
+Example:
+- release 5 slots every 6 hours until the available slots for the active phase have been fully released
+
+#### Drip feed states
+- `active`: slots are currently available and the drip is running
+- `waiting`: next batch releases in X time
+- `completed`: all slots for the current active phase have been released
+
+#### Drip feed behavior
+- Workers should only see slots that are currently released/available
+- Admin should see drip feed state clearly
+- Admin should be able to enable/disable drip feed while editing a task
+- Drip feed belongs to the task, not to individual phases
+- As the active phase changes, drip logic should apply to that active phase
+
+### 3. Bulk upload
+The task composer should support bulk upload to speed up task creation.
+
+This should be designed for admin efficiency.
+A practical implementation may support:
+- JSON paste/import
+- CSV upload
+- structured textarea import
+- template-based duplication
+
+The UX should make it easy to review and correct parsed tasks before final creation.
+
+### 4. Worker earnings
+Workers should have earnings displayed on their dashboard.
+
+Requirements:
+- show current earnings summary
+- update earnings optimistically when a worker completes a task submission flow
+- keep the UI responsive and believable even with mocked async state
+
+Important:
+- optimistic earnings should feel immediate
+- final status should still reconcile with the mocked backend state
+
+### 5. Worker past submissions
+Add a screen showing a worker’s past submissions.
+
+Requirements:
+- show past submissions clearly
+- support filtering/sorting
+- include enough task and phase context
+- work well on mobile and desktop
+
+## Scope simplification
+Ignore advanced platform concepts from the real system beyond what is explicitly required here, including:
 - reservations
-- complex behavioral configuration rules
+- complex behavioral configuration rules outside phases/drip feed
 - advanced payout logic
 - multi-admin collaboration
+- real-time sync across devices/users
 
-Keep the domain intentionally simple for the take-home.
+Keep the domain intentionally scoped and practical.
 
 ## Required screens and flows
 
 ### Shared foundation
-Build these first:
+Build and preserve:
 - mock authentication
 - mock user profiles
 - responsive app shell
@@ -113,6 +211,9 @@ Mock auth can be simple, but it should feel intentional and structured.
 Must support:
 - create mode
 - edit mode
+- phases configuration
+- drip feed configuration
+- bulk upload flow
 
 Expectations:
 - fast, low-friction admin workflow
@@ -120,6 +221,8 @@ Expectations:
 - helpful validation
 - thoughtful post-submit UX
 - avoid unnecessary redirects if keeping context is better
+- phase editing should be easy to scan and reorder
+- bulk upload should reduce repetitive manual entry
 
 #### Tasks Management
 Requirements:
@@ -131,6 +234,8 @@ Requirements:
 - filter and sort tasks
 - show key details without requiring the admin to click into a row
 - show total submissions and slots/amount left
+- show task phases in a clear, compact way
+- show drip feed state and progress
 
 #### Review
 Requirements:
@@ -138,12 +243,13 @@ Requirements:
 - support thousands of submissions
 - allow approve/reject
 - allow filtering, sorting, and grouping by task
-- include enough task context to review quickly from one screen
+- support task-level and phase-level review context
+- include enough task and phase context to review quickly from one screen
 
 ### Worker side
 #### Tasks Feed
 Requirements:
-- browse all tasks
+- browse all visible tasks
 - sort by latest
 - sort by highest reward
 - click/tap to view task details
@@ -151,6 +257,24 @@ Requirements:
 - support thousands of tasks
 - mobile-first usability
 - do **not** show campaign ID on worker side
+- only show the active phase by default
+- only expose past phases if the worker has submitted in them
+- respect drip feed slot availability
+
+#### Worker Dashboard
+Requirements:
+- show current earnings
+- update earnings optimistically
+- surface useful summary information without clutter
+
+#### Worker Submission History
+Requirements:
+- show worker’s past submissions
+- include submission status
+- include related task info
+- include phase info where applicable
+- support filtering and sorting
+- work well on mobile
 
 ## UX rules
 I care about product judgment, not just implementation.
@@ -163,6 +287,7 @@ Default UX principles:
 - make worker task completion frictionless
 - design worker experiences mobile-first
 - design admin experiences for dense, fast scanning
+- make complex behavior understandable without overwhelming the user
 
 ### Expected async states
 Every async surface should handle:
@@ -178,6 +303,7 @@ When the brief is ambiguous, prefer the decision that:
 - reduces page hops
 - improves clarity
 - helps a user finish their job faster
+- makes advanced behavior easier to understand visually
 
 ## Recommended product decisions
 Use these defaults unless the codebase or a stronger UX reason suggests otherwise.
@@ -193,17 +319,47 @@ Use these defaults unless the codebase or a stronger UX reason suggests otherwis
 - sorting should be obvious and quick
 - prioritize latest and highest reward because they are explicitly required
 
+### Phases UX
+- show the active phase prominently
+- show phase progress clearly to admin with compact visual indicators
+- use a stepper, segmented timeline, or stacked progress presentation rather than raw text only
+- on worker side, do not overload the screen with future phases
+- past phases should be visible only when relevant to that worker’s own history
+
+### Drip feed UX
+- prefer a progress bar + next release countdown/state over raw numbers alone
+- clearly distinguish:
+  - total phase slots
+  - released slots
+  - completed slots
+  - remaining unreleased slots
+- waiting state should be obvious to the worker if a task is temporarily unavailable due to drip pacing
+
+### Bulk upload UX
+- prefer an import flow with preview and validation
+- show parse errors inline and per row/item
+- make it easy to edit imported tasks before save
+- optimize for speed without making the experience fragile
+
 ### Admin task management
 - dense table on desktop is appropriate
 - pair table with inline summaries or a side detail panel
 - bulk actions should be quick and safe
 - destructive actions should have confirmation
+- phase summaries should be visible without forcing full drill-in
 
 ### Admin submissions
 - pending-first workflow is a strong default
 - status filters should be easy to reach
 - group-by-task should be available as a mode/toggle
 - show task context next to submission context to reduce cognitive load
+- phase context should be visible enough to avoid guesswork
+
+### Earnings UX
+- worker earnings should feel immediate and rewarding
+- optimistic update should happen right after submission action
+- final status should still align with the mocked backend data model
+- distinguish between lifetime earnings and pending/approved amounts if shown
 
 ### Derived progress
 For admin clarity, derive and show:
@@ -212,7 +368,11 @@ For admin clarity, derive and show:
 - pending submissions
 - rejected submissions
 - slots left vs `amount`
-- progress/completion state
+- phase completion state
+- active phase
+- drip release progress
+- drip state
+- completion/progress state
 
 ### Task deletion
 Soft delete in the mock layer is acceptable if it simplifies safety and state handling.
@@ -222,6 +382,7 @@ Deleted tasks should not appear in the worker feed.
 The app must handle:
 - thousands of tasks
 - thousands of submissions
+- derived phase and drip state calculations without UI lag
 
 Use practical performance patterns:
 - virtualization where appropriate
@@ -253,6 +414,8 @@ Create a distinct and consistent design system across the app:
 - typography
 - surface colors
 - interaction states
+- progress visuals
+- phase/drip indicators
 
 Inspiration in the brief is directional only.
 Do **not** clone it.
@@ -281,6 +444,9 @@ src/
     auth/
     tasks/
     submissions/
+    phases/
+    drip-feed/
+    earnings/
     admin/
     worker/
   lib/

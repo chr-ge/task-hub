@@ -6,12 +6,15 @@ export {
   updateTask,
   deleteTask,
   bulkUpdateTasks,
+  bulkCreateTasks,
+  simulateDripRelease,
 } from "./tasks";
 
 export {
   getSubmissions,
   getSubmissionsByTask,
   getSubmissionsByUser,
+  getSubmissionsByPhase,
   createSubmission,
   reviewSubmission,
 } from "./submissions";

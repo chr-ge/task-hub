@@ -6,6 +6,7 @@ import {
   ListTodo,
   ClipboardCheck,
   Briefcase,
+  TrendingUp,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
@@ -25,7 +26,9 @@ const adminNav: NavItem[] = [
 ];
 
 const userNav: NavItem[] = [
+  { label: "Earnings", href: "/user/earnings", icon: <TrendingUp className="size-4" /> },
   { label: "Tasks", href: "/user", icon: <Briefcase className="size-4" /> },
+  { label: "Submissions", href: "/user/submissions", icon: <ClipboardCheck className="size-4" /> },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -122,6 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               onClick={logout}
+              aria-label="Logout"
             >
               <LogOut className="size-3.5" />
             </button>
@@ -144,7 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                    "flex flex-1 flex-col items-center gap-0.5 py-3 text-[10px] font-medium transition-colors",
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground"

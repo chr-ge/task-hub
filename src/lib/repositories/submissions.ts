@@ -54,6 +54,14 @@ export async function createSubmission(
   return submission;
 }
 
+export async function getSubmissionsByPhase(
+  phaseId: string,
+): Promise<Submission[]> {
+  await simulateReadDelay();
+  const submissions = readSubmissions();
+  return submissions.filter((s) => s.phase_id === phaseId);
+}
+
 export async function reviewSubmission(
   id: string,
   status: "approved" | "rejected",

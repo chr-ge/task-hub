@@ -9,7 +9,7 @@ import type { Submission, SubmissionStatus, Task, User } from "@/lib/types";
 import { useSubmissions } from "@/features/submissions/hooks";
 import { useReviewSubmission } from "@/features/submissions/hooks";
 import { useAllTasks } from "@/features/tasks/hooks";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, TaskTypeBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -82,63 +82,6 @@ function getSubmissionPreview(data: Submission["data"]): string {
   }
 }
 
-function taskTypeLabel(type: Task["task_type"]): string {
-  switch (type) {
-    case "social_media_posting":
-      return "Posting";
-    case "social_media_liking":
-      return "Liking";
-    case "email_sending":
-      return "Email";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
-
-function StatusBadge({ status }: { status: SubmissionStatus }) {
-  return (
-    <Badge
-      variant={
-        status === "approved"
-          ? "default"
-          : status === "rejected"
-            ? "destructive"
-            : "secondary"
-      }
-      className={cn(
-        status === "approved" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-        status === "pending" && "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-      )}
-    >
-      {status}
-    </Badge>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Task type badge
-// ---------------------------------------------------------------------------
-
-const TASK_TYPE_COLORS: Record<Task["task_type"], { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
-
-function TaskTypeBadge({ type }: { type: Task["task_type"] }) {
-  const colors = TASK_TYPE_COLORS[type];
-  return (
-    <Badge
-      variant="outline"
-      className="border-transparent font-normal"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
-    >
-      {taskTypeLabel(type)}
-    </Badge>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Action buttons
@@ -207,6 +150,7 @@ function SkeletonRows({ count }: { count: number }) {
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-4 w-32" /></TableCell>
           <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-16" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -262,6 +206,7 @@ function FlatTable({
             <TableHead>User</TableHead>
             <TableHead>Task</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Phase</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Submitted</TableHead>
             <TableHead>Reviewed</TableHead>
@@ -285,6 +230,13 @@ function FlatTable({
                 </TableCell>
                 <TableCell>
                   {task ? <TaskTypeBadge type={task.task_type} /> : "\u2014"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {(() => {
+                    if (!s.phase_id) return "\u2014";
+                    const phase = task?.phases.find((p) => p.id === s.phase_id);
+                    return phase?.phase_name ?? "\u2014";
+                  })()}
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={s.status} />
@@ -390,6 +342,11 @@ function GroupedView({
               {g.task?.title ?? "Unknown task"}
             </span>
             {g.task && <TaskTypeBadge type={g.task.task_type} />}
+            {g.task && g.task.phases.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {g.task.phases.length} phases
+              </span>
+            )}
             <span className="ml-auto text-xs text-muted-foreground">
               {g.approvedCount}/{g.submissions.length} approved
               {g.pendingCount > 0 && (
@@ -408,6 +365,7 @@ function GroupedView({
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
+                <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Reviewed</TableHead>
@@ -423,6 +381,14 @@ function GroupedView({
                 >
                   <TableCell className="font-medium">
                     {userMap.get(s.user_id) ?? s.user_id.slice(0, 8)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {(() => {
+                      if (!s.phase_id) return "\u2014";
+                      const task = taskMap.get(s.task_id);
+                      const phase = task?.phases.find((p) => p.id === s.phase_id);
+                      return phase?.phase_name ?? "\u2014";
+                    })()}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={s.status} />
@@ -555,6 +521,34 @@ function SubmissionDetailPanel({
           )}
         </div>
 
+        {/* Phase info */}
+        {submission.phase_id && task && (() => {
+          const phase = task.phases.find((p) => p.id === submission.phase_id);
+          if (!phase) return null;
+          return (
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Phase
+              </h4>
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{phase.phase_name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Phase {phase.phase_index + 1} of {task.phases.length}
+                  </span>
+                </div>
+                {phase.instructions && (
+                  <p className="text-xs text-muted-foreground">{phase.instructions}</p>
+                )}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>${phase.reward.toFixed(2)} reward</span>
+                  <span>{phase.slots} slots</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Submission data */}
         <div className="space-y-3">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -635,7 +629,7 @@ function SubmissionDetailPanel({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
               disabled={reviewMutation.isPending && reviewMutation.variables?.id === submission.id}
               onClick={() =>
                 reviewMutation.mutate({ id: submission.id, status: "rejected" })
@@ -808,6 +802,7 @@ export default function AdminSubmissionsPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Reviewed</TableHead>
