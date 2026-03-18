@@ -10,12 +10,18 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { Task, Submission } from "@/lib/types";
+import type { Task, Submission, SubmissionStatus } from "@/lib/types";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
 import { useSubmissionsByUser } from "@/features/submissions/hooks";
 import { getWorkerEarnings } from "@/lib/derived";
-import { TaskTypeBadge, StatusBadge } from "@/components/shared";
+import { TaskTypeBadge } from "@/components/shared";
+
+const STATUS_BORDER_COLOR: Record<SubmissionStatus, string> = {
+  pending: "border-l-amber-500",
+  approved: "border-l-emerald-500",
+  rejected: "border-l-red-400",
+};
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,7 +84,7 @@ function SummaryCards({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {cards.map((card) => (
         <Card key={card.label} size="sm">
-          <CardContent className="flex items-center gap-3 pt-4">
+          <CardContent className="flex items-center gap-3">
             <div className={cn("flex size-9 items-center justify-center rounded-lg", card.bgColor, card.color)}>
               {card.icon}
             </div>
@@ -155,25 +161,22 @@ function EarningsList({
       {items.map((item) => (
         <div
           key={item.submission.id}
-          className="flex items-center gap-3 rounded-lg border bg-card p-3"
+          className={cn(
+            "flex items-center gap-3 rounded-md border border-l-[3px] bg-card px-3.5 py-2.5",
+            STATUS_BORDER_COLOR[item.submission.status]
+          )}
         >
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {item.task?.title ?? "Unknown task"}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              {item.task && (
-                <TaskTypeBadge type={item.task.task_type} />
-              )}
-              {item.phaseName && (
-                <span className="text-[10px] text-muted-foreground">
-                  {item.phaseName}
-                </span>
-              )}
-              <span className="text-[10px] text-muted-foreground">
-                {formatDate(item.submission.submitted_at)}
-              </span>
-              <StatusBadge status={item.submission.status} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium truncate">
+                {item.task?.title ?? "Unknown task"}
+              </p>
+              {item.task && <TaskTypeBadge type={item.task.task_type} />}
+            </div>
+            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="capitalize">{item.submission.status}</span>
+              {item.phaseName && <span>&middot; {item.phaseName}</span>}
+              <span>&middot; {formatDate(item.submission.submitted_at)}</span>
             </div>
           </div>
           <span

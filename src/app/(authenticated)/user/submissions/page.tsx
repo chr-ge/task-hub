@@ -15,9 +15,8 @@ import type { Task, Submission, SubmissionStatus } from "@/lib/types";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
 import { useSubmissionsByUser } from "@/features/submissions/hooks";
-import { StatusBadge, TaskTypeBadge } from "@/components/shared";
+import { TaskTypeBadge } from "@/components/shared";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +45,12 @@ function formatDate(iso: string): string {
 // Submission Card
 // ---------------------------------------------------------------------------
 
+const STATUS_BORDER_COLOR: Record<SubmissionStatus, string> = {
+  pending: "border-l-amber-500",
+  approved: "border-l-emerald-500",
+  rejected: "border-l-red-400",
+};
+
 function SubmissionCard({
   submission,
   task,
@@ -59,51 +64,61 @@ function SubmissionCard({
   const reward = phase ? phase.reward : (task?.reward ?? 0);
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">
-          {task?.title ?? "Unknown task"}
-        </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          {task && (
-            <TaskTypeBadge type={task.task_type} />
-          )}
-          {phase && (
-            <Badge variant="outline" className="text-[10px]">
-              {phase.phase_name}
-            </Badge>
-          )}
-          <StatusBadge status={submission.status} />
+    <div
+      className={cn(
+        "rounded-lg border border-l-[3px] bg-card p-3",
+        STATUS_BORDER_COLOR[submission.status]
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate">
+            {task?.title ?? "Unknown task"}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {task && <TaskTypeBadge type={task.task_type} />}
+            {phase && (
+              <span className="text-[10px]">
+                &middot; {phase.phase_name}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <ClockIcon className="size-3" />
-            Submitted {formatDate(submission.submitted_at)}
+        <div className="shrink-0 text-right">
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              submission.status === "approved"
+                ? "text-emerald-600"
+                : submission.status === "pending"
+                  ? "text-amber-600"
+                  : "text-muted-foreground line-through"
+            )}
+          >
+            ${reward.toFixed(2)}
           </span>
-          {submission.reviewed_at && (
-            <span className="flex items-center gap-1">
-              {submission.status === "approved" ? (
-                <CheckCircle2Icon className="size-3 text-emerald-600" />
-              ) : (
-                <XCircleIcon className="size-3 text-red-600" />
-              )}
-              Reviewed {formatDate(submission.reviewed_at)}
-            </span>
-          )}
+          <p className="mt-0.5 text-[10px] capitalize text-muted-foreground">
+            {submission.status}
+          </p>
         </div>
       </div>
-      <span
-        className={cn(
-          "shrink-0 text-sm font-semibold tabular-nums",
-          submission.status === "approved"
-            ? "text-emerald-600"
-            : submission.status === "pending"
-              ? "text-amber-600"
-              : "text-muted-foreground line-through"
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <ClockIcon className="size-3" />
+          {formatDate(submission.submitted_at)}
+        </span>
+        {submission.reviewed_at && (
+          <span className="flex items-center gap-1">
+            {submission.status === "approved" ? (
+              <CheckCircle2Icon className="size-3 text-emerald-600" />
+            ) : (
+              <XCircleIcon className="size-3 text-red-600" />
+            )}
+            Reviewed {formatDate(submission.reviewed_at)}
+          </span>
         )}
-      >
-        ${reward.toFixed(2)}
-      </span>
+      </div>
     </div>
   );
 }

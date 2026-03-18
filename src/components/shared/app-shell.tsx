@@ -26,8 +26,8 @@ const adminNav: NavItem[] = [
 ];
 
 const userNav: NavItem[] = [
-  { label: "Tasks", href: "/user", icon: <Briefcase className="size-4" /> },
   { label: "Earnings", href: "/user/earnings", icon: <TrendingUp className="size-4" /> },
+  { label: "Tasks", href: "/user", icon: <Briefcase className="size-4" /> },
   { label: "Submissions", href: "/user/submissions", icon: <ClipboardCheck className="size-4" /> },
 ];
 
