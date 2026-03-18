@@ -9,7 +9,7 @@ import type { Submission, SubmissionStatus, Task, User } from "@/lib/types";
 import { useSubmissions } from "@/features/submissions/hooks";
 import { useReviewSubmission } from "@/features/submissions/hooks";
 import { useAllTasks } from "@/features/tasks/hooks";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, TaskTypeBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -82,63 +82,6 @@ function getSubmissionPreview(data: Submission["data"]): string {
   }
 }
 
-function taskTypeLabel(type: Task["task_type"]): string {
-  switch (type) {
-    case "social_media_posting":
-      return "Posting";
-    case "social_media_liking":
-      return "Liking";
-    case "email_sending":
-      return "Email";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
-
-function StatusBadge({ status }: { status: SubmissionStatus }) {
-  return (
-    <Badge
-      variant={
-        status === "approved"
-          ? "default"
-          : status === "rejected"
-            ? "destructive"
-            : "secondary"
-      }
-      className={cn(
-        status === "approved" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-        status === "pending" && "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-      )}
-    >
-      {status}
-    </Badge>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Task type badge
-// ---------------------------------------------------------------------------
-
-const TASK_TYPE_COLORS: Record<Task["task_type"], { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
-
-function TaskTypeBadge({ type }: { type: Task["task_type"] }) {
-  const colors = TASK_TYPE_COLORS[type];
-  return (
-    <Badge
-      variant="outline"
-      className="border-transparent font-normal"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
-    >
-      {taskTypeLabel(type)}
-    </Badge>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Action buttons
@@ -686,7 +629,7 @@ function SubmissionDetailPanel({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
               disabled={reviewMutation.isPending && reviewMutation.variables?.id === submission.id}
               onClick={() =>
                 reviewMutation.mutate({ id: submission.id, status: "rejected" })

@@ -10,6 +10,8 @@ import { SearchIcon, LoaderIcon, InboxIcon, MousePointerClickIcon } from "lucide
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, TaskPhase, SubmissionData } from "@/lib/types";
+import { TASK_TYPE_LABELS } from "@/lib/constants";
+import { TaskTypeBadge } from "@/components/shared";
 import {
   SocialMediaPostingDataSchema,
   EmailSendingDataSchema,
@@ -50,41 +52,12 @@ const PAGE_SIZE = 20;
 
 type SortMode = "latest" | "highest_reward";
 
-const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  social_media_posting: "Social Media Post",
-  email_sending: "Email Sending",
-  social_media_liking: "Social Media Like",
-};
-
-const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function formatReward(reward: number): string {
   return `$${reward.toFixed(2)}`;
-}
-
-// ---------------------------------------------------------------------------
-// TaskTypeBadge
-// ---------------------------------------------------------------------------
-
-function TaskTypeBadge({ taskType }: { taskType: TaskType }) {
-  const colors = TASK_TYPE_COLORS[taskType];
-  return (
-    <Badge
-      variant="outline"
-      className="border-transparent"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
-    >
-      {TASK_TYPE_LABELS[taskType]}
-    </Badge>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +101,7 @@ function TaskCard({
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2">
-          <TaskTypeBadge taskType={task.task_type} />
+          <TaskTypeBadge type={task.task_type} />
           <span className="text-xs text-muted-foreground">
             {availableSlots} slot{availableSlots !== 1 ? "s" : ""} available
           </span>
@@ -310,7 +283,7 @@ function TaskDetail({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold">{task.title}</h2>
-          <TaskTypeBadge taskType={task.task_type} />
+          <TaskTypeBadge type={task.task_type} />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="font-semibold text-green-600 dark:text-green-400">
@@ -594,6 +567,7 @@ export default function UserTasksPage() {
             placeholder="Search tasks..."
             value={search}
             onChange={handleSearchChange}
+            aria-label="Search tasks"
           />
         </div>
         <div className="flex gap-1">

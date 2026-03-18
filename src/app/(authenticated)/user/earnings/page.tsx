@@ -15,27 +15,12 @@ import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
 import { useSubmissionsByUser } from "@/features/submissions/hooks";
 import { getWorkerEarnings } from "@/lib/derived";
+import { TaskTypeBadge, StatusBadge } from "@/components/shared";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const TASK_TYPE_LABELS: Record<Task["task_type"], string> = {
-  social_media_posting: "Posting",
-  email_sending: "Email",
-  social_media_liking: "Liking",
-};
-
-const TASK_TYPE_COLORS: Record<Task["task_type"], { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -151,7 +136,7 @@ function EarningsList({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <div className="animate-in-fade flex flex-col items-center gap-3 py-12 text-center">
         <div className="rounded-full bg-muted p-3">
           <InboxIcon className="size-5 text-muted-foreground" />
         </div>
@@ -178,16 +163,7 @@ function EarningsList({
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {item.task && (
-                <Badge
-                  variant="outline"
-                  className="border-transparent text-[10px]"
-                  style={{
-                    backgroundColor: TASK_TYPE_COLORS[item.task.task_type].bg,
-                    color: TASK_TYPE_COLORS[item.task.task_type].text,
-                  }}
-                >
-                  {TASK_TYPE_LABELS[item.task.task_type]}
-                </Badge>
+                <TaskTypeBadge type={item.task.task_type} />
               )}
               {item.phaseName && (
                 <span className="text-[10px] text-muted-foreground">
@@ -197,24 +173,7 @@ function EarningsList({
               <span className="text-[10px] text-muted-foreground">
                 {formatDate(item.submission.submitted_at)}
               </span>
-              <Badge
-                variant={
-                  item.submission.status === "approved"
-                    ? "default"
-                    : item.submission.status === "rejected"
-                      ? "destructive"
-                      : "secondary"
-                }
-                className={cn(
-                  "text-[10px]",
-                  item.submission.status === "approved" &&
-                    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-                  item.submission.status === "pending" &&
-                    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-                )}
-              >
-                {item.submission.status}
-              </Badge>
+              <StatusBadge status={item.submission.status} />
             </div>
           </div>
           <span

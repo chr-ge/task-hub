@@ -33,6 +33,8 @@ import {
 
 import { cn } from "@/lib/utils";
 import type { Task, TaskType, Submission } from "@/lib/types";
+import { TASK_TYPE_LABELS } from "@/lib/constants";
+import { TaskTypeBadge } from "@/components/shared";
 import { getActivePhase, getPhaseProgress, getDripProgress } from "@/lib/derived";
 import {
   useAllTasks,
@@ -89,17 +91,6 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  social_media_posting: "Social Media Posting",
-  email_sending: "Email Sending",
-  social_media_liking: "Social Media Liking",
-};
-
-const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
 
 const ALL_TASK_TYPES: TaskType[] = [
   "social_media_posting",
@@ -466,16 +457,7 @@ function TaskDetailPanel({
       <SheetHeader className="border-b">
         <SheetTitle className="pr-8 text-lg">{task.title}</SheetTitle>
         <SheetDescription className="mt-1.5 flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-transparent"
-            style={{
-              backgroundColor: TASK_TYPE_COLORS[task.task_type].bg,
-              color: TASK_TYPE_COLORS[task.task_type].text,
-            }}
-          >
-            {TASK_TYPE_LABELS[task.task_type]}
-          </Badge>
+          <TaskTypeBadge type={task.task_type} short={false} />
           <Badge variant={isCompleted ? "secondary" : "outline"}>
             {isCompleted ? "Completed" : "Active"}
           </Badge>
@@ -577,7 +559,7 @@ function TaskDetailPanel({
                             </Badge>
                           )}
                           {phaseProgress.isComplete && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-300 text-emerald-600">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400">
                               Complete
                             </Badge>
                           )}
@@ -624,8 +606,8 @@ function TaskDetailPanel({
                     variant="outline"
                     className={cn(
                       "text-[10px] px-1.5 py-0",
-                      drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700",
-                      drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700",
+                      drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+                      drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
                       drip.state === "completed" && "border-muted text-muted-foreground",
                     )}
                   >
@@ -703,7 +685,7 @@ function TaskDetailPanel({
             <PencilIcon className="size-3.5" />
             Edit Task
           </Button>
-          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={onDelete}>
+          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300" onClick={onDelete}>
             <Trash2Icon className="size-3.5" />
             Delete
           </Button>
@@ -826,18 +808,9 @@ export default function AdminTasksPage() {
       {
         accessorKey: "task_type",
         header: "Type",
-        cell: ({ row }) => {
-          const type = row.original.task_type;
-          return (
-            <Badge
-              variant="outline"
-              className="border-transparent"
-              style={{ backgroundColor: TASK_TYPE_COLORS[type].bg, color: TASK_TYPE_COLORS[type].text }}
-            >
-              {TASK_TYPE_LABELS[type]}
-            </Badge>
-          );
-        },
+        cell: ({ row }) => (
+          <TaskTypeBadge type={row.original.task_type} />
+        ),
         filterFn: "equals",
         enableGlobalFilter: false,
       },
@@ -934,8 +907,8 @@ export default function AdminTasksPage() {
                 variant="outline"
                 className={cn(
                   "text-[10px] px-1.5 py-0",
-                  drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700",
-                  drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700",
+                  drip.state === "active" && "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+                  drip.state === "waiting" && "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
                   drip.state === "completed" && "border-muted bg-muted text-muted-foreground",
                 )}
               >

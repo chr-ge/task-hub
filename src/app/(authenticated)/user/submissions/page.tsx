@@ -15,6 +15,7 @@ import type { Task, Submission, SubmissionStatus } from "@/lib/types";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTasks } from "@/features/tasks/hooks";
 import { useSubmissionsByUser } from "@/features/submissions/hooks";
+import { StatusBadge, TaskTypeBadge } from "@/components/shared";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,18 +25,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const TASK_TYPE_LABELS: Record<Task["task_type"], string> = {
-  social_media_posting: "Posting",
-  email_sending: "Email",
-  social_media_liking: "Liking",
-};
-
-const TASK_TYPE_COLORS: Record<Task["task_type"], { bg: string; text: string }> = {
-  social_media_posting: { bg: "#E0E0E2", text: "#3a3a3c" },
-  email_sending: { bg: "#B5BAD0", text: "#2e3348" },
-  social_media_liking: { bg: "#7389AE", text: "#ffffff" },
-};
 
 type StatusFilter = "all" | SubmissionStatus;
 const STATUS_FILTERS: StatusFilter[] = ["all", "pending", "approved", "rejected"];
@@ -51,23 +40,6 @@ function formatDate(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function StatusBadge({ status }: { status: SubmissionStatus }) {
-  return (
-    <Badge
-      variant={
-        status === "approved" ? "default" : status === "rejected" ? "destructive" : "secondary"
-      }
-      className={cn(
-        "text-[10px]",
-        status === "approved" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-        status === "pending" && "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-      )}
-    >
-      {status}
-    </Badge>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -94,16 +66,7 @@ function SubmissionCard({
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           {task && (
-            <Badge
-              variant="outline"
-              className="border-transparent text-[10px]"
-              style={{
-                backgroundColor: TASK_TYPE_COLORS[task.task_type].bg,
-                color: TASK_TYPE_COLORS[task.task_type].text,
-              }}
-            >
-              {TASK_TYPE_LABELS[task.task_type]}
-            </Badge>
+            <TaskTypeBadge type={task.task_type} />
           )}
           {phase && (
             <Badge variant="outline" className="text-[10px]">

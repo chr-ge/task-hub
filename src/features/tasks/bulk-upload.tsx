@@ -238,7 +238,7 @@ export function BulkUpload({ open, onOpenChange, onSuccess }: BulkUploadProps) {
                 variant="outline"
                 className={cn(
                   "gap-1",
-                  validTasks.length > 0 && "border-emerald-300 text-emerald-700"
+                  validTasks.length > 0 && "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"
                 )}
               >
                 <CheckCircle2Icon className="size-3" />
@@ -299,7 +299,7 @@ export function BulkUpload({ open, onOpenChange, onSuccess }: BulkUploadProps) {
                         {item.values ? (
                           <Badge
                             variant="outline"
-                            className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]"
+                            className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px]"
                           >
                             Valid
                           </Badge>

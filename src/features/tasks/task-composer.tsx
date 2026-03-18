@@ -9,6 +9,7 @@ import { Loader2Icon, PlusIcon, Trash2Icon, ChevronDownIcon, ChevronUpIcon } fro
 import { cn } from "@/lib/utils";
 import type { Task, TaskFormValues } from "@/lib/types";
 import { TaskFormValuesSchema } from "@/lib/types";
+import { TASK_TYPE_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,16 +42,6 @@ interface TaskComposerProps {
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const TASK_TYPE_LABELS: Record<TaskFormValues["task_type"], string> = {
-  social_media_posting: "Social Media Posting",
-  email_sending: "Email Sending",
-  social_media_liking: "Social Media Liking",
-};
 
 // ---------------------------------------------------------------------------
 // Component
